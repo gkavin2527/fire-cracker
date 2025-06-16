@@ -38,9 +38,11 @@ const ProductsPage = () => {
     }
 
     if (searchTerm) {
+      const lowercasedSearchTerm = searchTerm.toLowerCase();
       tempProducts = tempProducts.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchTerm.toLowerCase())
+        p.name.toLowerCase().includes(lowercasedSearchTerm) ||
+        p.description.toLowerCase().includes(lowercasedSearchTerm) ||
+        p.id.toLowerCase().includes(lowercasedSearchTerm)
       );
     }
     
@@ -82,7 +84,7 @@ const ProductsPage = () => {
                 <Input
                   id="search-term"
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Search by name, ID, desc..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
