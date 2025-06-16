@@ -33,6 +33,12 @@ let allKeysPresent = true;
 const missingKeys: string[] = [];
 const envVarExamples: string[] = [];
 const actualEnvVars: Record<string, string | undefined> = {};
+let consoleOutputFunction = console.warn; 
+
+if (typeof window !== 'undefined') {
+  consoleOutputFunction = console.log;
+}
+
 
 expectedKeys.forEach(keyName => {
   let envVarName = `NEXT_PUBLIC_FIREBASE_`;
@@ -46,7 +52,7 @@ expectedKeys.forEach(keyName => {
     case 'appId': envVarName += 'APP_ID'; exampleValuePart += 'app_id'; break;
   }
   envVarExamples.push(`${envVarName}=${exampleValuePart}_from_firebase_console`);
-  actualEnvVars[envVarName] = process.env[envVarName]; // Store actual value for logging
+  actualEnvVars[envVarName] = process.env[envVarName];
 
   if (!firebaseConfigValues[keyName]) {
     allKeysPresent = false;
@@ -60,7 +66,7 @@ if (!allKeysPresent) {
     `CRITICAL FIREBASE CONFIGURATION WARNING:\n` +
     `One or more Firebase environment variables are MISSING or UNDEFINED.\n` +
     `Firebase WILL NOT WORK correctly and will likely throw an "auth/invalid-api-key" error.\n\n` +
-    `MISSING OR UNDEFINED VARIABLE(S):\n${missingKeys.map(k => `  - ${k} (Current value: ${actualEnvVars[k]})`).join('\n')}\n\n` +
+    `MISSING OR UNDEFINED VARIABLE(S):\n${missingKeys.map(k => `  - ${k} (Current value in process.env: ${actualEnvVars[k]})`).join('\n')}\n\n` +
     `This usually means your .env.local file is missing, incorrectly named, in the wrong directory (must be project root),\n` +
     `or does not contain all the correct environment variables with their values.\n\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
@@ -75,10 +81,10 @@ if (!allKeysPresent) {
     `--------------------------------------------------------------------------------------------------------\n` +
     `!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
   
-  if (typeof window === 'undefined') {
-    console.warn(warningMessage);
+  if (typeof window !== 'undefined') {
+    setTimeout(() => consoleOutputFunction(warningMessage), 100);
   } else {
-    setTimeout(() => console.warn(warningMessage), 0);
+    consoleOutputFunction(warningMessage);
   }
 }
 
@@ -93,14 +99,45 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+  try {
+    app = initializeApp(firebaseConfig);
+  } catch (e: any) {
+    console.error("Firebase initialization error:", e.message);
+    if (e.message && e.message.includes("auth/invalid-api-key")) {
+         console.error(
+          "DETAILED HINT: The 'auth/invalid-api-key' error specifically means that the 'apiKey' value (NEXT_PUBLIC_FIREBASE_API_KEY) is missing, incorrect, or the Firebase app for this key has been deleted or is not properly configured for web usage in your Firebase project console. Double-check this value in your .env.local file AND in your Firebase project settings."
+        );
+    }
+    // Re-throw the error or handle it as appropriate for your app if initialization truly fails
+    // For now, we'll proceed to getAuth which will likely also fail and show the error, but we've logged details.
+    // In a production app, you might want to set a global error state here.
+    // Attempting to get/initialize app again can lead to further issues if the config is bad.
+    // So, if an error occurs, app might be undefined.
+    // We will just let the subsequent getAuth call fail, which is what the user is seeing.
+    // The critical part is the console logging above.
+    
+    // To ensure 'app' is assigned, even if initialization fails,
+    // we assign a placeholder or re-throw to prevent `getAuth` from getting an undefined `app`.
+    // However, the best approach is to let the original error propagate or handle it gracefully.
+    // For this scenario, we'll allow `getAuth` to fail if `initializeApp` failed.
+    // The console logs are the most important part for the user to debug.
+    if (!getApps().length) { // Check again if initializeApp failed to create an app instance
+        // This path means initializeApp threw and there's still no app.
+        // This is a critical failure. We can't proceed.
+        // Throwing here makes it clear initialization failed.
+        throw new Error(`Firebase app initialization failed critically. Check console for details. Original error: ${e.message}`);
+    } else {
+        app = getApps()[0]; // It might have been initialized by another part if error was non-fatal
+    }
+  }
 } else {
   app = getApps()[0];
 }
 
+// The getAuth() function will throw an error (like auth/invalid-api-key)
+// if the app is not initialized correctly due to missing or invalid configuration.
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 export { app, auth, googleProvider };
 
-    
