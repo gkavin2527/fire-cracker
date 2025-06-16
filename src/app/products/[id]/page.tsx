@@ -1,35 +1,73 @@
-import { getProductById } from '@/lib/mockData';
+
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AddToCartButton from './AddToCartButton';
 import { Star, ShieldCheck } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/products/ProductCard';
-import { products as allProducts } from '@/lib/mockData';
+import type { Product } from '@/types';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+
+async function getProduct(id: string): Promise<Product | null> {
+  try {
+    const res = await fetch(`${APP_URL}/api/products/${id}`, { cache: 'no-store' });
+    if (!res.ok) {
+      if (res.status === 404) return null; // Product not found
+      console.error(`Failed to fetch product ${id}:`, res.status, await res.text());
+      return null;
+    }
+    return res.json();
+  } catch (error) {
+    console.error(`Error fetching product ${id}:`, error);
+    return null;
+  }
+}
+
+async function getRelatedProducts(category: string, currentProductId: string): Promise<Product[]> {
+  try {
+    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
+    if (!res.ok) {
+      console.error("Failed to fetch all products for related products:", res.status, await res.text());
+      return [];
+    }
+    const allProducts: Product[] = await res.json();
+    return allProducts
+      .filter(p => p.category === category && p.id !== currentProductId)
+      .slice(0, 4);
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    return [];
+  }
+}
 
 export async function generateStaticParams() {
-  // In a real app, fetch all product IDs
-  return allProducts.map(product => ({
-    id: product.id,
-  }));
+  try {
+    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
+    if (!res.ok) {
+      console.error("Failed to fetch products for generateStaticParams:", res.status, await res.text());
+      return [];
+    }
+    const products: Product[] = await res.json();
+    return products.map(product => ({
+      id: product.id,
+    }));
+  } catch (error) {
+    console.error("Error in generateStaticParams fetching products:", error);
+    return [];
+  }
 }
 
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = getProductById(params.id);
+export default async function ProductDetailPage({ params }: { params: { id: string } }) {
+  const product = await getProduct(params.id);
 
   if (!product) {
     notFound();
   }
 
-  const relatedProducts = allProducts
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const relatedProducts = await getRelatedProducts(product.category, product.id);
 
   return (
     <div className="space-y-12">
@@ -70,14 +108,18 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                 )}
               </div>
 
-              {product.stock && product.stock > 0 && (
+              {typeof product.stock === 'number' && product.stock > 0 && (
                 <p className="text-sm text-green-600 font-medium">
                   {product.stock > 10 ? "In Stock" : `Only ${product.stock} left!`}
                 </p>
               )}
-              {product.stock === 0 && (
+              {typeof product.stock === 'number' && product.stock === 0 && (
                 <p className="text-sm text-red-600 font-medium">Out of Stock</p>
               )}
+               {typeof product.stock === 'undefined' && (
+                <p className="text-sm text-muted-foreground font-medium">Stock information unavailable</p>
+              )}
+
 
               <AddToCartButton product={product} />
 
