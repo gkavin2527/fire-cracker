@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 interface FirebaseConfigValues {
   apiKey?: string;
@@ -113,6 +114,7 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
+let db;
 
 // Check if Firebase has already been initialized
 if (!getApps().length) {
@@ -161,4 +163,15 @@ if (!getApps().length) {
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, googleProvider };
+// Initialize Firestore only if the app was initialized successfully (or to let Firestore give its own error)
+try {
+    db = getFirestore(app);
+} catch (e: any) {
+    const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
+    criticalErrorLogger("Firestore initialization error in src/lib/firebase.ts:", e.message);
+    // db will remain undefined, and subsequent Firestore operations will likely fail,
+    // which should be handled by the calling code (e.g., API routes).
+}
+
+
+export { app, auth, googleProvider, db };

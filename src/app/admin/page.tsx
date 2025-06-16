@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
-import { products as initialProducts } from '@/lib/mockData';
+import { useState, useEffect } from 'react';
 import type { Product } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -14,19 +13,46 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2 } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function AdminPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
 
-  const handleAddProduct = (newProduct: Product) => {
-    // In a real app, this would send data to a backend.
-    // For now, we'll just add to the local state and log.
-    setProducts(prevProducts => [...prevProducts, { ...newProduct, id: `prod-${Date.now()}` }]);
-    console.log('New Product Added:', newProduct);
+  useEffect(() => {
+    const fetchAdminProducts = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data: Product[] = await response.json();
+        setProducts(data);
+      } catch (e: any) {
+        console.error("Failed to fetch products for admin page:", e);
+        setError(e.message || "Failed to load products.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAdminProducts();
+  }, []);
+
+  const handleAddProduct = (newProduct: Omit<Product, 'id' | 'rating'>) => {
+    // In a real app, this would send data to a backend to create the product.
+    // For now, we'll just add to the local state and log. This part needs to be updated
+    // in a future step to actually use a POST API endpoint to add products to Firestore.
+    const mockId = `prod-${Date.now()}`;
+    const productWithId: Product = { ...newProduct, id: mockId, rating: newProduct.rating || undefined, stock: newProduct.stock || 0 };
+    setProducts(prevProducts => [...prevProducts, productWithId]);
+    console.log('New Product Added (Mock):', productWithId);
     setIsAddProductDialogOpen(false); // Close dialog after adding
   };
 
@@ -56,7 +82,14 @@ export default function AdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {products.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-3 text-muted-foreground">Loading products...</p>
+            </div>
+          ) : error ? (
+            <p className="text-destructive text-center py-10">Error loading products: {error}</p>
+          ) : products.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -82,7 +115,7 @@ export default function AdminPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground">No products found.</p>
+            <p className="text-muted-foreground text-center py-10">No products found. Add some products to get started!</p>
           )}
         </CardContent>
       </Card>

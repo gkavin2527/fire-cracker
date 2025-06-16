@@ -1,34 +1,71 @@
+
 "use client";
 
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '@/components/products/ProductCard';
-import { products as allProducts, categories } from '@/lib/mockData';
-import type { Product, Category } from '@/types';
+import { categories } from '@/lib/mockData'; // Categories still from mockData for now
+import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ListFilter, Search } from 'lucide-react';
+import { ListFilter, Search, Loader2 } from 'lucide-react';
 
 const ProductsPage = () => {
   const searchParams = useSearchParams();
   const initialCategorySlug = searchParams.get('category');
 
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(allProducts);
+  const [allFetchedProducts, setAllFetchedProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategorySlug || 'all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]); // Max price could be dynamic
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
   const [sortOrder, setSortOrder] = useState<string>('default');
 
-  const maxPrice = useMemo(() => Math.max(...allProducts.map(p => p.price), 100), []);
-  useEffect(() => { setPriceRange([0,maxPrice])}, [maxPrice]);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data: Product[] = await response.json();
+        setAllFetchedProducts(data);
+        setFilteredProducts(data); // Initialize filteredProducts with all data
+        if (data.length > 0) {
+          const newMaxPrice = Math.ceil(Math.max(...data.map(p => p.price), 100) / 10) * 10; // Round up to nearest 10
+          setPriceRange([0, newMaxPrice]);
+        } else {
+          setPriceRange([0, 100]);
+        }
+      } catch (e: any) {
+        console.error("Failed to fetch products:", e);
+        setError(e.message || "Failed to load products.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const maxPrice = useMemo(() => {
+    if (allFetchedProducts.length === 0 && isLoading) return 100; // Default while loading
+    if (allFetchedProducts.length === 0 && !isLoading) return 100; // Default if no products
+    return Math.ceil(Math.max(...allFetchedProducts.map(p => p.price), 100) / 10) * 10;
+  }, [allFetchedProducts, isLoading]);
 
 
   useEffect(() => {
-    let tempProducts = allProducts;
+    let tempProducts = [...allFetchedProducts];
 
     if (selectedCategory !== 'all') {
       const category = categories.find(c => c.slug === selectedCategory);
@@ -58,9 +95,8 @@ const ProductsPage = () => {
        tempProducts.sort((a,b) => b.name.localeCompare(a.name));
     }
 
-
     setFilteredProducts(tempProducts);
-  }, [selectedCategory, searchTerm, priceRange, sortOrder, maxPrice]);
+  }, [selectedCategory, searchTerm, priceRange, sortOrder, allFetchedProducts]);
   
   useEffect(() => {
     if(initialCategorySlug) {
@@ -68,6 +104,12 @@ const ProductsPage = () => {
     }
   }, [initialCategorySlug]);
 
+  const resetFilters = () => {
+    setSelectedCategory('all');
+    setSearchTerm('');
+    setPriceRange([0, maxPrice]);
+    setSortOrder('default');
+  };
 
   return (
     <div className="flex flex-col md:flex-row gap-8">
@@ -115,11 +157,12 @@ const ProductsPage = () => {
                 <div className="mt-2 p-1 border rounded-md">
                     <Slider
                     min={0}
-                    max={maxPrice}
+                    max={maxPrice} // Use dynamic maxPrice
                     step={1}
                     value={priceRange}
                     onValueChange={(value) => setPriceRange(value as [number, number])}
                     className="my-4"
+                    disabled={isLoading}
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                     <span>${priceRange[0]}</span>
@@ -152,7 +195,16 @@ const ProductsPage = () => {
         <h1 className="text-3xl font-bold mb-8 font-headline">
           {selectedCategory === 'all' ? 'All Products' : categories.find(c=>c.slug === selectedCategory)?.name || 'Products'}
         </h1>
-        {filteredProducts.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-10 text-destructive">
+            <p className="text-xl">Error: {error}</p>
+            <p>Could not load products. Please try again later.</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -161,7 +213,7 @@ const ProductsPage = () => {
         ) : (
           <div className="text-center py-10">
             <p className="text-xl text-muted-foreground">No products found matching your criteria.</p>
-            <Button variant="link" onClick={() => { setSelectedCategory('all'); setSearchTerm(''); setPriceRange([0, maxPrice]); }} className="mt-4 text-primary">
+            <Button variant="link" onClick={resetFilters} className="mt-4 text-primary">
               Clear all filters
             </Button>
           </div>

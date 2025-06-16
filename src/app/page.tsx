@@ -1,13 +1,34 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // Removed CardHeader, CardTitle as they are not directly used here for categories
 import ProductCard from '@/components/products/ProductCard';
-import { categories, products } from '@/lib/mockData';
+import { categories } from '@/lib/mockData'; // Categories still from mockData for now
+import type { Product } from '@/types';
 import { ArrowRight, Gift } from 'lucide-react';
 import Image from 'next/image';
 
-export default function HomePage() {
-  const featuredProducts = products.slice(0, 4); // Show first 4 products as featured
+async function getProducts(): Promise<Product[]> {
+  try {
+    // Construct the full URL for fetching, especially important for server-side environments
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const res = await fetch(`${appUrl}/api/products`, { cache: 'no-store' }); 
+    
+    if (!res.ok) {
+      console.error("Failed to fetch products for homepage:", res.status, await res.text());
+      return [];
+    }
+    const products: Product[] = await res.json();
+    return products;
+  } catch (error) {
+    console.error("Error fetching products for homepage:", error);
+    return [];
+  }
+}
+
+export default async function HomePage() {
+  const allProducts = await getProducts();
+  const featuredProducts = allProducts.slice(0, 4);
 
   return (
     <div className="space-y-12">
@@ -63,11 +84,15 @@ export default function HomePage() {
       {/* Featured Products Section */}
       <section>
         <h2 className="text-3xl font-bold text-center mb-8 font-headline">Featured Crackers</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {featuredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center col-span-full">Could not load featured products or no products available.</p>
+        )}
         <div className="text-center mt-8">
           <Link href="/products" passHref>
             <Button variant="outline" size="lg" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
