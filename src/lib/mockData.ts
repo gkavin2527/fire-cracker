@@ -2,12 +2,54 @@ import type { Product, Category } from '@/types';
 import { Rocket, Bomb, Sparkles, Disc3, Gift, Smile } from 'lucide-react';
 
 export const categories: Category[] = [
-  { id: 'sky-shots', name: 'Sky Shots / Aerials', icon: Rocket, slug: 'sky-shots' },
-  { id: 'ground-crackers', name: 'Ground Crackers', icon: Bomb, slug: 'ground-crackers' },
-  { id: 'sparklers', name: 'Sparklers', icon: Sparkles, slug: 'sparklers' },
-  { id: 'spinning-crackers', name: 'Spinning Crackers', icon: Disc3, slug: 'spinning-crackers' },
-  { id: 'fancy-novelty', name: 'Fancy / Novelty', icon: Gift, slug: 'fancy-novelty' },
-  { id: 'kids-special', name: 'Kids Special', icon: Smile, slug: 'kids-special' },
+  { 
+    id: 'sky-shots', 
+    name: 'Sky Shots / Aerials', 
+    icon: Rocket, 
+    slug: 'sky-shots', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'sky fireworks' 
+  },
+  { 
+    id: 'ground-crackers', 
+    name: 'Ground Crackers', 
+    icon: Bomb, 
+    slug: 'ground-crackers', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'ground firecrackers' 
+  },
+  { 
+    id: 'sparklers', 
+    name: 'Sparklers', 
+    icon: Sparkles, 
+    slug: 'sparklers', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'handheld sparklers' 
+  },
+  { 
+    id: 'spinning-crackers', 
+    name: 'Spinning Crackers', 
+    icon: Disc3, 
+    slug: 'spinning-crackers', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'spinning fireworks' 
+  },
+  { 
+    id: 'fancy-novelty', 
+    name: 'Fancy / Novelty', 
+    icon: Gift, 
+    slug: 'fancy-novelty', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'festive fireworks' 
+  },
+  { 
+    id: 'kids-special', 
+    name: 'Kids Special', 
+    icon: Smile, 
+    slug: 'kids-special', 
+    imageUrl: 'https://placehold.co/200x150.png', 
+    imageHint: 'safe fireworks' 
+  },
 ];
 
 export const products: Product[] = [

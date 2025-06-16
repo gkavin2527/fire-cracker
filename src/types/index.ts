@@ -17,6 +17,8 @@ export interface Category {
   name: string;
   icon?: LucideIcon; // Or string for path to custom SVG
   slug: string;
+  imageUrl: string;
+  imageHint: string;
 }
 
 export interface CartItem {

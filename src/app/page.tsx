@@ -39,10 +39,19 @@ export default function HomePage() {
             const Icon = category.icon || Gift;
             return (
               <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
-                <Card className="text-center hover:shadow-lg transition-shadow duration-300 cursor-pointer bg-card rounded-lg border-border/60 overflow-hidden group">
-                  <CardContent className="p-4 sm:p-6 flex flex-col items-center justify-center">
-                    <Icon className="h-10 w-10 sm:h-12 sm:w-12 mb-3 text-primary group-hover:scale-110 transition-transform" />
-                    <h3 className="text-sm sm:text-base font-semibold font-headline group-hover:text-primary transition-colors">{category.name}</h3>
+                <Card className="relative text-center hover:shadow-xl transition-all duration-300 cursor-pointer rounded-lg border-border/60 overflow-hidden group h-40">
+                  <Image
+                    src={category.imageUrl}
+                    alt={category.name}
+                    layout="fill"
+                    objectFit="cover"
+                    className="transition-transform duration-500 group-hover:scale-110 z-0"
+                    data-ai-hint={category.imageHint}
+                  />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300 z-1" />
+                  <CardContent className="relative z-2 p-4 sm:p-6 flex flex-col items-center justify-center h-full">
+                    <Icon className="h-10 w-10 sm:h-12 sm:w-12 mb-3 text-white group-hover:text-accent group-hover:scale-110 transition-all" />
+                    <h3 className="text-sm sm:text-base font-semibold font-headline text-primary-foreground group-hover:text-accent transition-colors">{category.name}</h3>
                   </CardContent>
                 </Card>
               </Link>
