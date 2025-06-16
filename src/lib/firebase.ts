@@ -34,16 +34,8 @@ const missingKeys: string[] = [];
 const envVarExamples: string[] = [];
 const actualEnvVars: Record<string, string | undefined> = {};
 
-// Prefer console.warn for server-side logging during build/startup if possible,
-// but console.log is fine for client-side checks if this runs there too.
-let consoleOutputFunction = console.warn; 
-
-if (typeof window !== 'undefined') {
-  // If running in the browser, regular console.log might be less alarming
-  // though the primary check is for server-side loading of env vars.
-  // consoleOutputFunction = console.log; 
-}
-
+// Use console.warn for server-side, console.log for client-side potential logging
+let consoleOutputFunction = typeof window === 'undefined' ? console.warn : console.log; 
 
 expectedKeys.forEach(keyName => {
   let envVarName = `NEXT_PUBLIC_FIREBASE_`;
@@ -57,7 +49,7 @@ expectedKeys.forEach(keyName => {
     case 'appId': envVarName += 'APP_ID'; exampleValuePart += 'app_id'; break;
   }
   envVarExamples.push(`${envVarName}=${exampleValuePart}_from_firebase_console`);
-  actualEnvVars[envVarName] = process.env[envVarName]; // For logging what process.env actually sees
+  actualEnvVars[envVarName] = process.env[envVarName];
 
   if (!firebaseConfigValues[keyName]) {
     allKeysPresent = false;
@@ -70,8 +62,8 @@ if (!allKeysPresent) {
     `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n` +
     `CRITICAL FIREBASE CONFIGURATION WARNING (src/lib/firebase.ts):\n` +
     `One or more Firebase environment variables are MISSING or UNDEFINED.\n` +
-    `Firebase WILL NOT WORK correctly and will likely throw an "auth/invalid-api-key" error.\n\n` +
-    `MISSING OR UNDEFINED VARIABLE(S) (checked via process.env.VAR_NAME):\n${missingKeys.map(k => `  - ${k} (Current value: ${actualEnvVars[k]})`).join('\n')}\n\n` +
+    `Firebase WILL NOT WORK correctly and will likely throw an "auth/invalid-api-key" error or similar.\n\n` +
+    `MISSING OR UNDEFINED VARIABLE(S) (checked via process.env.VAR_NAME):\n${missingKeys.map(k => `  - ${k} (Current value as seen by app: ${actualEnvVars[k]})`).join('\n')}\n\n` +
     `This usually means your .env.local file is missing, incorrectly named, in the wrong directory (must be project root),\n` +
     `or does not contain all the correct environment variables with their values.\n\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
@@ -84,7 +76,7 @@ if (!allKeysPresent) {
     `   AFTER creating or modifying the .env.local file for changes to take effect.\n` +
     `   The "auth/invalid-api-key" error will persist if these variables are not correctly set and loaded.\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
-    `CURRENT VALUES BEING USED BY THE APP (check for undefined or incorrect values):\n` +
+    `CURRENT VALUES BEING USED BY THE APP (check for undefined or incorrect values):\n`+
     `NEXT_PUBLIC_FIREBASE_API_KEY=${firebaseConfigValues.apiKey}\n`+
     `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${firebaseConfigValues.authDomain}\n`+
     `NEXT_PUBLIC_FIREBASE_PROJECT_ID=${firebaseConfigValues.projectId}\n`+
@@ -93,11 +85,9 @@ if (!allKeysPresent) {
     `NEXT_PUBLIC_FIREBASE_APP_ID=${firebaseConfigValues.appId}\n` +
     `!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
   
-  // Delay slightly if in browser to ensure console is ready
   if (typeof window !== 'undefined') {
     setTimeout(() => consoleOutputFunction(warningMessage), 100);
   } else {
-    // For server-side, log immediately. This should appear in your `npm run dev` terminal.
     consoleOutputFunction(warningMessage);
   }
 }
@@ -112,13 +102,16 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
+
 // Check if Firebase has already been initialized
 if (!getApps().length) {
   try {
+    // Only attempt to initialize if all essential keys might be present (or to let Firebase give its specific error)
+    // This check primarily helps in guiding the user with our detailed logs if basic requirements aren't met.
+    // Firebase's own `initializeApp` will throw if config is truly invalid (e.g., malformed API key).
     app = initializeApp(firebaseConfig);
   } catch (e: any) {
     console.error("Firebase initialization error in src/lib/firebase.ts:", e.message);
-    // Provide more specific hint for the common invalid-api-key error
     if (e.message && e.message.toLowerCase().includes("invalid-api-key")) {
          console.error(
           "DETAILED HINT for 'auth/invalid-api-key': The 'apiKey' value (NEXT_PUBLIC_FIREBASE_API_KEY) " +
@@ -127,22 +120,14 @@ if (!getApps().length) {
           ".env.local file AND in your Firebase project settings (Project settings > General > Your apps > Config)."
         );
     }
-    
-    // Fallback: if initialization fails but an app instance somehow got created by another part (unlikely here), use it.
-    // More robustly, you might want to prevent app usage if primary init fails.
-    if (!getApps().length) { 
-        // This is a critical failure. The app might not be usable.
-        // You could throw a more specific error here to halt execution if Firebase is essential.
-        console.error("CRITICAL: Firebase app failed to initialize and no app instance exists.");
-        // To make the app still "run" but with Firebase broken, we can assign a dummy/placeholder app
-        // or throw to stop the app. For now, we'll let it proceed and auth will fail.
-        // A more robust solution might throw here: 
-        // throw new Error(`Firebase app initialization failed critically. Check console for details. Original error: ${e.message}`);
-        // However, to prevent a total crash and allow other parts of the app to potentially load,
-        // we'll let getAuth fail later.
-        app = {} as FirebaseApp; // Dummy app to prevent further errors here, auth will fail later
+    // If initialization fails, and no app instance exists, this is critical.
+    // For robustness, we assign a placeholder to prevent further cascading errors here,
+    // though auth and other Firebase services will fail later.
+    if (!getApps().length) {
+        console.error("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
+        app = {} as FirebaseApp; // Assign a dummy app to prevent immediate crash
     } else {
-        app = getApps()[0]; 
+        app = getApps()[0]; // Should not happen if initializeApp failed and no apps were prior.
     }
   }
 } else {
