@@ -34,8 +34,22 @@ const missingKeys: string[] = [];
 const envVarExamples: string[] = [];
 const actualEnvVars: Record<string, string | undefined> = {};
 
-// Use console.warn for server-side, console.log for client-side potential logging
-let consoleOutputFunction = typeof window === 'undefined' ? console.warn : console.log; 
+// Determine the console output function based on environment
+// Use console.error for high visibility of critical issues, especially during build/server-side.
+let consoleOutputFunction = console.error;
+if (typeof window !== 'undefined') {
+  // For client-side, console.log might be less alarming if it's a common re-import,
+  // but given the severity of this config issue, console.error is still appropriate.
+  // We'll use a flag to ensure client-side warning logs only once per session effectively.
+  if (!(window as any).__FIREBASE_CONFIG_WARNING_LOGGED__) {
+    (window as any).__FIREBASE_CONFIG_WARNING_LOGGED__ = true;
+  } else {
+    // If already logged on client, suppress further identical warnings during HMR, etc.
+    // Set to a no-op function.
+    consoleOutputFunction = () => {};
+  }
+}
+
 
 expectedKeys.forEach(keyName => {
   let envVarName = `NEXT_PUBLIC_FIREBASE_`;
@@ -49,7 +63,7 @@ expectedKeys.forEach(keyName => {
     case 'appId': envVarName += 'APP_ID'; exampleValuePart += 'app_id'; break;
   }
   envVarExamples.push(`${envVarName}=${exampleValuePart}_from_firebase_console`);
-  actualEnvVars[envVarName] = process.env[envVarName];
+  actualEnvVars[envVarName] = process.env[envVarName]; // Store actual value for logging
 
   if (!firebaseConfigValues[keyName]) {
     allKeysPresent = false;
@@ -76,20 +90,17 @@ if (!allKeysPresent) {
     `   AFTER creating or modifying the .env.local file for changes to take effect.\n` +
     `   The "auth/invalid-api-key" error will persist if these variables are not correctly set and loaded.\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
-    `CURRENT VALUES BEING USED BY THE APP (check for undefined or incorrect values):\n`+
-    `NEXT_PUBLIC_FIREBASE_API_KEY=${firebaseConfigValues.apiKey}\n`+
-    `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${firebaseConfigValues.authDomain}\n`+
-    `NEXT_PUBLIC_FIREBASE_PROJECT_ID=${firebaseConfigValues.projectId}\n`+
-    `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${firebaseConfigValues.storageBucket}\n`+
-    `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${firebaseConfigValues.messagingSenderId}\n`+
-    `NEXT_PUBLIC_FIREBASE_APP_ID=${firebaseConfigValues.appId}\n` +
+    `CURRENT VALUES ATTEMPTING TO BE USED BY THE APP (check for 'undefined' or incorrect values):\n`+
+    `apiKey: ${firebaseConfigValues.apiKey}\n`+
+    `authDomain: ${firebaseConfigValues.authDomain}\n`+
+    `projectId: ${firebaseConfigValues.projectId}\n`+
+    `storageBucket: ${firebaseConfigValues.storageBucket}\n`+
+    `messagingSenderId: ${firebaseConfigValues.messagingSenderId}\n`+
+    `appId: ${firebaseConfigValues.appId}\n` +
     `!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
   
-  if (typeof window !== 'undefined') {
-    setTimeout(() => consoleOutputFunction(warningMessage), 100);
-  } else {
-    consoleOutputFunction(warningMessage);
-  }
+  // Log the warning. If on client and already warned, consoleOutputFunction is a no-op.
+  consoleOutputFunction(warningMessage);
 }
 
 const firebaseConfig = {
@@ -111,21 +122,32 @@ if (!getApps().length) {
     // Firebase's own `initializeApp` will throw if config is truly invalid (e.g., malformed API key).
     app = initializeApp(firebaseConfig);
   } catch (e: any) {
-    console.error("Firebase initialization error in src/lib/firebase.ts:", e.message);
-    if (e.message && e.message.toLowerCase().includes("invalid-api-key")) {
-         console.error(
+    // Ensure consoleOutputFunction is console.error for this critical catch block
+    const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
+    criticalErrorLogger("Firebase initialization error in src/lib/firebase.ts:", e.message);
+
+    if (e.message && (e.message.toLowerCase().includes("invalid-api-key") || e.code === 'auth/invalid-api-key')) {
+         criticalErrorLogger(
           "DETAILED HINT for 'auth/invalid-api-key': The 'apiKey' value (NEXT_PUBLIC_FIREBASE_API_KEY) " +
           "is missing, incorrect, or the Firebase app for this key has been deleted or is not properly " +
           "configured for web usage in your Firebase project console. Double-check this value in your " +
           ".env.local file AND in your Firebase project settings (Project settings > General > Your apps > Config)."
         );
     }
+     if (e.message && e.message.toLowerCase().includes("must be a non-empty string")){
+        criticalErrorLogger(
+          "DETAILED HINT: A Firebase config value (e.g. apiKey, authDomain, projectId) " +
+          "is likely an empty string ''. Ensure all NEXT_PUBLIC_FIREBASE_... variables in .env.local have actual values."
+        );
+    }
     // If initialization fails, and no app instance exists, this is critical.
     // For robustness, we assign a placeholder to prevent further cascading errors here,
     // though auth and other Firebase services will fail later.
     if (!getApps().length) {
-        console.error("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
-        app = {} as FirebaseApp; // Assign a dummy app to prevent immediate crash
+        criticalErrorLogger("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
+        // Attempting to create a minimal app object to prevent immediate crashes on getAuth
+        // This will still fail for actual Firebase operations but might prevent some cascading JS errors.
+        app = {name: '[failed-initialization]', options: {}, automaticDataCollectionEnabled: false} as FirebaseApp;
     } else {
         app = getApps()[0]; // Should not happen if initializeApp failed and no apps were prior.
     }
@@ -140,4 +162,3 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 export { app, auth, googleProvider };
-
