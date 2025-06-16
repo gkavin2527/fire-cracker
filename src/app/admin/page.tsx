@@ -16,44 +16,79 @@ import { Button } from '@/components/ui/button';
 import { Package, Users, ShoppingBag, PlusCircle, Loader2 } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const fetchAdminProducts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/products');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      const data: Product[] = await response.json();
+      setProducts(data);
+    } catch (e: any) {
+      console.error("Failed to fetch products for admin page:", e);
+      setError(e.message || "Failed to load products.");
+      toast({
+        title: "Error Loading Products",
+        description: e.message || "Could not fetch products from the server.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAdminProducts = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-        const data: Product[] = await response.json();
-        setProducts(data);
-      } catch (e: any) {
-        console.error("Failed to fetch products for admin page:", e);
-        setError(e.message || "Failed to load products.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchAdminProducts();
   }, []);
 
-  const handleAddProduct = (newProduct: Omit<Product, 'id' | 'rating'>) => {
-    // In a real app, this would send data to a backend to create the product.
-    // For now, we'll just add to the local state and log. This part needs to be updated
-    // in a future step to actually use a POST API endpoint to add products to Firestore.
-    const mockId = `prod-${Date.now()}`;
-    const productWithId: Product = { ...newProduct, id: mockId, rating: newProduct.rating || undefined, stock: newProduct.stock || 0 };
-    setProducts(prevProducts => [...prevProducts, productWithId]);
-    console.log('New Product Added (Mock):', productWithId);
-    setIsAddProductDialogOpen(false); // Close dialog after adding
+  const handleAddProduct = async (newProductData: Omit<Product, 'id' | 'rating'>) => {
+    setIsSubmittingProduct(true);
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProductData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to add product. Status: ${response.status}`);
+      }
+
+      const addedProduct: Product = await response.json();
+      setProducts(prevProducts => [...prevProducts, addedProduct]);
+      toast({
+        title: "Product Added!",
+        description: `${addedProduct.name} has been successfully added to the database.`,
+      });
+      setIsAddProductDialogOpen(false); // Close dialog on success
+      return true; // Indicate success
+    } catch (e: any) {
+      console.error('Failed to add product:', e);
+      toast({
+        title: "Error Adding Product",
+        description: e.message || "Could not save the product to the server.",
+        variant: "destructive",
+      });
+      return false; // Indicate failure
+    } finally {
+      setIsSubmittingProduct(false);
+    }
   };
 
   return (
@@ -70,7 +105,10 @@ export default function AdminPage() {
             <DialogHeader>
               <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
             </DialogHeader>
-            <AddProductForm onSubmitProduct={handleAddProduct} />
+            <AddProductForm 
+              onSubmitProduct={handleAddProduct}
+              isSubmitting={isSubmittingProduct}
+            />
           </DialogContent>
         </Dialog>
       </div>

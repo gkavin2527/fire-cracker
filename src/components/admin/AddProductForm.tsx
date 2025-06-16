@@ -16,9 +16,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import type { Product } from '@/types';
-import { categories } from '@/lib/mockData'; // Assuming categories are available from mockData
+import { categories } from '@/lib/mockData';
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -26,19 +26,18 @@ const formSchema = z.object({
   price: z.coerce.number().positive({ message: "Price must be a positive number." }),
   category: z.string().min(1, { message: "Please select a category." }),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(), // Adjusted max length for hint
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
-type ProductFormValues = Omit<Product, 'id' | 'rating'>; // id and rating are typically auto-generated or derived
+type ProductFormValues = Omit<Product, 'id' | 'rating'>;
 
 interface AddProductFormProps {
-  onSubmitProduct: (product: ProductFormValues) => void;
+  onSubmitProduct: (product: ProductFormValues) => Promise<boolean>; // Returns promise indicating success
+  isSubmitting: boolean;
 }
 
-const AddProductForm = ({ onSubmitProduct }: AddProductFormProps) => {
-  const { toast } = useToast();
-
+const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) => {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -46,19 +45,17 @@ const AddProductForm = ({ onSubmitProduct }: AddProductFormProps) => {
       description: "",
       price: 0,
       category: "",
-      imageUrl: "https://placehold.co/400x300.png", // Default placeholder
+      imageUrl: "https://placehold.co/400x300.png",
       imageHint: "product image",
       stock: 0,
     },
   });
 
-  function onSubmit(values: ProductFormValues) {
-    onSubmitProduct(values);
-    toast({
-      title: "Product Action",
-      description: "Product data logged to console and (mock) added to list.",
-    });
-    form.reset(); // Reset form after submission
+  async function onSubmit(values: ProductFormValues) {
+    const success = await onSubmitProduct(values);
+    if (success) {
+      form.reset(); 
+    }
   }
 
   return (
@@ -168,8 +165,15 @@ const AddProductForm = ({ onSubmitProduct }: AddProductFormProps) => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-          Add Product
+        <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Adding Product...
+            </>
+          ) : (
+            "Add Product"
+          )}
         </Button>
       </form>
     </Form>
