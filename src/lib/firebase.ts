@@ -34,7 +34,7 @@ expectedKeys.forEach(keyName => {
 });
 
 if (!allKeysPresent) {
-  console.warn(
+  const warningMessage =
     `\n********************************************************************************************************\n` +
     `CRITICAL WARNING: One or more Firebase environment variables are missing or undefined.\n` +
     `Firebase WILL NOT WORK correctly without them. Missing variable(s): \n${missingKeys.map(k => `  - ${k}`).join('\n')}\n\n` +
@@ -45,8 +45,15 @@ if (!allKeysPresent) {
     `IMPORTANT: You MUST restart your development server (e.g., by stopping it with Ctrl+C and running 'npm run dev' again) \n` +
     `AFTER creating or modifying the .env.local file for changes to take effect.\n` +
     `The error "Firebase: Error (auth/invalid-api-key)" will persist if these variables are not correctly set and loaded.\n` +
-    `********************************************************************************************************\n`
-  );
+    `********************************************************************************************************\n`;
+  
+  // Log to server console during build/server-side rendering
+  if (typeof window === 'undefined') {
+    console.warn(warningMessage);
+  } else {
+    // For client-side, ensure it's noticeable if direct file execution occurs, though less likely for this file
+    setTimeout(() => console.warn(warningMessage), 0);
+  }
 }
 
 const firebaseConfig = {
