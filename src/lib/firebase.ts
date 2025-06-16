@@ -20,18 +20,20 @@ const expectedKeys: (keyof typeof firebaseConfigValues)[] = [
   'appId',
 ];
 
+let allKeysPresent = true;
 const missingKeys: string[] = [];
 const envVarInstructions: string[] = [];
 
 expectedKeys.forEach(keyName => {
   const envVarName = `NEXT_PUBLIC_FIREBASE_${keyName.replace(/([A-Z])/g, '_$1').toUpperCase()}`;
+  envVarInstructions.push(`${envVarName}=your_actual_${keyName}_from_firebase_console`);
   if (!firebaseConfigValues[keyName]) {
+    allKeysPresent = false;
     missingKeys.push(envVarName);
   }
-  envVarInstructions.push(`${envVarName}=your_actual_${keyName}_from_firebase_console`);
 });
 
-if (missingKeys.length > 0) {
+if (!allKeysPresent) {
   console.warn(
     `\n********************************************************************************************************\n` +
     `CRITICAL WARNING: One or more Firebase environment variables are missing or undefined.\n` +
