@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface Product {
@@ -43,3 +44,6 @@ export interface Order {
   orderDate: Date;
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 }
+
+// Type for the product form, excluding fields that are auto-generated or not part of creation
+export type ProductFormData = Omit<Product, 'id' | 'rating'>;

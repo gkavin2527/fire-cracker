@@ -1,5 +1,9 @@
 
-import { products } from '@/lib/mockData';
+"use client";
+
+import { useState } from 'react';
+import { products as initialProducts } from '@/lib/mockData';
+import type { Product } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -9,13 +13,40 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
-import { Package, Users, ShoppingBag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Package, Users, ShoppingBag, PlusCircle } from 'lucide-react';
+import AddProductForm from '@/components/admin/AddProductForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function AdminPage() {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+
+  const handleAddProduct = (newProduct: Product) => {
+    // In a real app, this would send data to a backend.
+    // For now, we'll just add to the local state and log.
+    setProducts(prevProducts => [...prevProducts, { ...newProduct, id: `prod-${Date.now()}` }]);
+    console.log('New Product Added:', newProduct);
+    setIsAddProductDialogOpen(false); // Close dialog after adding
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
+        <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <PlusCircle className="mr-2 h-5 w-5" /> Add New Product
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
+            </DialogHeader>
+            <AddProductForm onSubmitProduct={handleAddProduct} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="shadow-md rounded-lg border-border/60">
@@ -30,7 +61,7 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">ID</TableHead>
+                    <TableHead className="w-[120px]">ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Price</TableHead>
@@ -51,7 +82,7 @@ export default function AdminPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground">No products found in mock data.</p>
+            <p className="text-muted-foreground">No products found.</p>
           )}
         </CardContent>
       </Card>
