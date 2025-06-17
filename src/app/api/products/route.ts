@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'; // Ensure fresh data on every request
 
 export async function GET() {
   if (!db) {
-    console.error("Firestore database is not initialized.");
+    console.error("Firestore database is not initialized in /api/products GET.");
     return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
   }
   try {
@@ -21,12 +21,25 @@ export async function GET() {
       products.push({ id: doc.id, ...doc.data() } as Product);
     });
     return NextResponse.json(products);
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    if (error instanceof Error && error.message.includes('indexes')) {
-         return NextResponse.json({ error: 'Firestore query requires an index. Please create it in the Firebase console.', details: error.message }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error fetching products from Firestore API:", error);
+
+    // Check for Firestore specific error codes for missing index
+    // Firestore error code for missing index is typically 'failed-precondition'
+    if (error.code === 'failed-precondition' && error.message && error.message.toLowerCase().includes('index')) {
+        return NextResponse.json({
+            error: 'Firestore query for products requires a composite index. Please create it in the Firebase console.',
+            details: error.message,
+            firestoreErrorCode: error.code
+        }, { status: 500 });
     }
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    
+    // Fallback for other errors
+    return NextResponse.json({
+        error: 'Failed to fetch products from Firestore.',
+        details: error.message || String(error), // Provide more details from the error object
+        firestoreErrorCode: error.code || 'N/A' // Include Firestore error code if available
+    }, { status: 500 });
   }
 }
 
@@ -42,7 +55,7 @@ const ProductFormSchema = z.object({
 
 export async function POST(request: Request) {
   if (!db) {
-    console.error("Firestore database is not initialized.");
+    console.error("Firestore database is not initialized in /api/products POST.");
     return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
   }
   try {
@@ -55,7 +68,6 @@ export async function POST(request: Request) {
 
     const productData = validation.data;
 
-    // Prepare data for Firestore, ensuring all fields are present or have defaults
     const newProduct: Omit<Product, 'id' | 'rating'> & { rating?: number } = {
       name: productData.name,
       description: productData.description,
@@ -64,7 +76,6 @@ export async function POST(request: Request) {
       imageUrl: productData.imageUrl || `https://placehold.co/400x300.png`,
       imageHint: productData.imageHint || productData.name.split(' ').slice(0,2).join(' ') || 'product image',
       stock: productData.stock ?? 0,
-      // rating is not part of the form, will be undefined or could be set to a default like 0 or null
     };
 
     const productsCollection = collection(db, 'products');
@@ -72,11 +83,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ id: docRef.id, ...newProduct }, { status: 201 });
 
-  } catch (error) {
-    console.error("Error adding product:", error);
-    if (error instanceof Error && error.message.includes('permission-denied')) {
-        return NextResponse.json({ error: 'Firestore permission denied. Check your Firestore security rules.'}, { status: 403});
+  } catch (error: any) {
+    console.error("Error adding product to Firestore API:", error);
+    if (error.code === 'permission-denied') {
+        return NextResponse.json({ error: 'Firestore permission denied. Check your Firestore security rules.', details: error.message, firestoreErrorCode: error.code}, { status: 403});
     }
-    return NextResponse.json({ error: 'Failed to add product' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add product to Firestore.', details: error.message || String(error), firestoreErrorCode: error.code || 'N/A' }, { status: 500 });
   }
 }
