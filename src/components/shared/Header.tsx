@@ -24,7 +24,7 @@ import { useRouter } from 'next/navigation';
 
 // Define the admin email address here
 // In a real app, this would come from a more secure configuration or user role system
-const ADMIN_EMAIL = "admin@example.com";
+const ADMIN_EMAIL = "gkavin446@gmail.com";
 
 const NavLink = ({ href, children, onClick }: { href: string; children: React.ReactNode, onClick?: () => void }) => (
   <Link href={href} passHref>
