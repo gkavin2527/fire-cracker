@@ -137,11 +137,7 @@ const Header = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-       {user && user.email === ADMIN_EMAIL && (
-         <NavLink href="/admin" onClick={() => setMobileMenuOpen(false)}>
-            <ShieldCheck className="mr-2 h-5 w-5" /> Admin
-        </NavLink>
-       )}
+       {/* Admin link removed from main navItems to avoid duplication. It's in the user dropdown. */}
     </>
   );
 
@@ -274,3 +270,4 @@ const Header = () => {
 };
 
 export default Header;
+
