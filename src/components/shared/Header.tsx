@@ -22,6 +22,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Define the admin email address here
+// In a real app, this would come from a more secure configuration or user role system
+const ADMIN_EMAIL = "admin@example.com";
+
 const NavLink = ({ href, children, onClick }: { href: string; children: React.ReactNode, onClick?: () => void }) => (
   <Link href={href} passHref>
     <Button variant="ghost" onClick={onClick} className="text-foreground hover:text-primary transition-colors font-medium w-full justify-start md:w-auto">
@@ -124,7 +128,7 @@ const Header = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-       {user && (
+       {user && user.email === ADMIN_EMAIL && (
          <NavLink href="/admin" onClick={() => setMobileMenuOpen(false)}>
             <ShieldCheck className="mr-2 h-5 w-5" /> Admin
         </NavLink>
