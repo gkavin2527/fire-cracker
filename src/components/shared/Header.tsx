@@ -2,11 +2,11 @@
 "use client";
 
 import Link from 'next/link';
-import { ShoppingCart, Home, Package, Menu, SparklesIcon, UserCircle, LogIn, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShoppingCart, Home, Package, Menu, SparklesIcon, UserCircle, LogIn, LogOut, ShieldCheck, Loader2, User as UserIcon } from 'lucide-react'; // Added UserIcon
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import GKCrackersLogo from '@/components/icons/CrackleMartLogo'; // Corrected import path
+import GKCrackersLogo from '@/components/icons/CrackleMartLogo';
 import type { Category } from '@/types';
 // import { getIcon } from '@/lib/iconMap'; // getIcon no longer needed for categories
 import {
@@ -22,8 +22,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Define the admin email address here
-// In a real app, this would come from a more secure configuration or user role system
 const ADMIN_EMAIL = "gkavin446@gmail.com";
 
 const NavLink = ({ href, children, onClick }: { href: string; children: React.ReactNode, onClick?: () => void }) => (
@@ -96,6 +94,11 @@ const Header = () => {
     router.push('/login');
   }
 
+  const handleNavigate = (path: string) => {
+    setMobileMenuOpen(false);
+    router.push(path);
+  }
+
   const navItems = (
     <>
       <NavLink href="/" onClick={() => setMobileMenuOpen(false)}>
@@ -104,7 +107,7 @@ const Header = () => {
       <NavLink href="/products" onClick={() => setMobileMenuOpen(false)}>
         <Package className="mr-2 h-5 w-5" /> Products
       </NavLink>
-      <DropdownMenu onOpenChange={(open) => { if(!open) setMobileMenuOpen(false)}}>
+      <DropdownMenu onOpenChange={(open) => { if(!open && mobileMenuOpen) setMobileMenuOpen(false)}}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="text-foreground hover:text-primary transition-colors font-medium w-full justify-start md:w-auto">
             {categoriesLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <SparklesIcon className="mr-2 h-5 w-5" />} Categories
@@ -189,6 +192,17 @@ const Header = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleNavigate('/account')} className="cursor-pointer">
+                  <UserIcon className="mr-2 h-4 w-4" /> 
+                  <span>My Account</span>
+                </DropdownMenuItem>
+                {user.email === ADMIN_EMAIL && (
+                  <DropdownMenuItem onClick={() => handleNavigate('/admin')} className="cursor-pointer">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    <span>Admin Dashboard</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
@@ -210,6 +224,9 @@ const Header = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background p-6 flex flex-col">
+                <Link href="/" passHref className="flex items-center gap-2 mb-4" onClick={() => setMobileMenuOpen(false)}>
+                    <GKCrackersLogo className="h-8 w-auto" />
+                </Link>
                 <nav className="flex flex-col space-y-2 mt-4">
                   {navItems}
                 </nav>
@@ -217,7 +234,7 @@ const Header = () => {
                  {authLoading ? <p className="text-sm text-muted-foreground">Loading...</p> :
                   user ? (
                     <div className="space-y-2">
-                       <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2 mb-2">
                          <Avatar className="h-8 w-8">
                             <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "User"} />
                             <AvatarFallback>
@@ -229,7 +246,15 @@ const Header = () => {
                              <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                           </div>
                        </div>
-                        <Button variant="outline" onClick={handleLogout} className="w-full">
+                        <Button variant="outline" onClick={() => handleNavigate('/account')} className="w-full justify-start">
+                          <UserIcon className="mr-2 h-4 w-4" /> My Account
+                        </Button>
+                        {user.email === ADMIN_EMAIL && (
+                            <Button variant="outline" onClick={() => handleNavigate('/admin')} className="w-full justify-start">
+                                <ShieldCheck className="mr-2 h-4 w-4" /> Admin Dashboard
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={handleLogout} className="w-full justify-start">
                           <LogOut className="mr-2 h-4 w-4" /> Logout
                         </Button>
                     </div>
