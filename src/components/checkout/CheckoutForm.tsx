@@ -24,7 +24,7 @@ import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confir
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from '@/lib/firebase';
-import { doc, setDoc, Timestamp, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, collection } from 'firebase/firestore'; // Removed addDoc as setDoc is used with specific ID
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -107,7 +107,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       
       toast({
         title: "Order Saved!",
-        description: `Your order ${orderId} has been successfully saved.`,
+        description: `Your order ${orderId} has been successfully saved. Preparing confirmation email...`,
       });
 
     } catch (dbError: any) {
@@ -148,38 +148,34 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
       const emailContent = await generateOrderConfirmationEmail(emailInput);
       
-      // Write to 'mail' collection for Trigger Email extension
-      if (db) {
-        const mailCollectionRef = collection(db, 'mail');
-        await addDoc(mailCollectionRef, {
-          to: [shippingDetails.email], // Must be an array
-          message: {
-            subject: emailContent.subject,
-            html: emailContent.htmlBody,
-          },
-        });
-        toast({
-          title: "Order Confirmation Queued",
-          description: "Your order confirmation email is being prepared and will be sent shortly.",
-        });
-      } else {
-         console.warn("Firestore 'db' instance not available. Could not queue email.");
-         toast({
-            title: "Email Queueing Skipped",
-            description: "Order confirmation email was generated but not queued for sending (DB issue). Content logged to console.",
-            variant: "destructive"
-         });
-         console.log("Generated Order Confirmation Email Content (DB not available for queuing):");
-         console.log("To:", shippingDetails.email);
-         console.log("Subject:", emailContent.subject);
-         console.log("HTML Body:", emailContent.htmlBody);
-      }
+      // Send email using the API route
+      const emailApiResponse = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: shippingDetails.email,
+          subject: emailContent.subject,
+          htmlBody: emailContent.htmlBody,
+        }),
+      });
 
-    } catch (emailError) {
-      console.error("Failed to generate or queue order confirmation email:", emailError);
+      if (!emailApiResponse.ok) {
+        const errorData = await emailApiResponse.json();
+        throw new Error(errorData.error || `Failed to send email via API (status: ${emailApiResponse.status})`);
+      }
+        
       toast({
-        title: "Email Processing Failed",
-        description: "Could not prepare the order confirmation email. Your order was still placed and saved.",
+        title: "Order Confirmation Sent",
+        description: "Your order confirmation email has been sent successfully.",
+      });
+
+    } catch (emailError: any) {
+      console.error("Failed to generate or send order confirmation email:", emailError);
+      toast({
+        title: "Email Sending Failed",
+        description: `Could not send the order confirmation email: ${emailError.message}. Your order was still placed and saved.`,
         variant: "destructive",
       });
     }
@@ -306,7 +302,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         </Form>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground text-center">
-        <p>This is a demo checkout. No real payment will be processed. Order confirmation email will be queued for sending via Firebase 'Trigger Email' extension (requires setup). Orders will be saved to Firestore.</p>
+        <p>This is a demo checkout. No real payment will be processed. Order confirmation email will be sent using Nodemailer via an API route (requires SMTP .env configuration). Orders will be saved to Firestore.</p>
       </CardFooter>
     </Card>
   );

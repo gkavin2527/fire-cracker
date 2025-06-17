@@ -31,9 +31,14 @@ const OrderConfirmationPage = () => {
         if (parsedOrder.orderId === orderId) {
           setOrderDetails(parsedOrder);
         } else {
+          // If orderId in URL doesn't match session, it's likely an old session or direct nav.
+          // For safety, redirect to prevent showing wrong info.
+          console.warn("Order ID in URL does not match session. Redirecting.");
           router.replace('/'); 
         }
       } else {
+        // No order details in session, user might have navigated directly.
+        console.warn("No order details in session for confirmation page. Redirecting.");
         router.replace('/');
       }
     }
@@ -96,7 +101,7 @@ const OrderConfirmationPage = () => {
           </div>
           
           <p className="text-sm text-muted-foreground text-center">
-            You will receive an email confirmation shortly from our system.
+            You should receive an email confirmation shortly with your order details.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
