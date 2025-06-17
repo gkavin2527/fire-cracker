@@ -45,6 +45,12 @@ const Header = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   useEffect(() => {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
@@ -151,7 +157,7 @@ const Header = () => {
           <Link href="/cart" passHref>
             <Button variant="ghost" size="icon" aria-label="Shopping Cart" className="relative">
               <ShoppingCart className="h-6 w-6 text-primary" />
-              {itemCount > 0 && (
+              {hasMounted && itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                   {itemCount}
                 </span>
