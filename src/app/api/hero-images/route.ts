@@ -33,7 +33,7 @@ export async function GET() {
     
     if (error.code === 'failed-precondition' && error.message && error.message.toLowerCase().includes('index')) {
         return NextResponse.json({
-            error: 'Firestore query for hero images requires a composite index (isActive ASC, displayOrder ASC). Please create it in the Firebase console.',
+            error: 'Firestore query for hero images requires a composite index. Please create it in the Firebase console for the "heroImages" collection with fields: isActive (Ascending) and displayOrder (Ascending).',
             details: error.message, 
             firestoreErrorCode: error.code
         }, { status: 500 });
@@ -46,3 +46,4 @@ export async function GET() {
     }, { status: 500 });
   }
 }
+
