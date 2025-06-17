@@ -26,11 +26,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  // AlertDialogTrigger, // No longer needed for this specific button
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore'; // Added getDocs, query, orderBy, doc, deleteDoc
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore'; 
 import * as z from "zod";
 
 const ProductFormSchema = z.object({
@@ -49,7 +48,7 @@ const CategoryFormSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with dashes, e.g., 'sky-shots'."),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
   imageHint: z.string().min(1, "Image hint is required.").max(50, "Image hint should be brief, max 50 chars."),
-  iconName: z.string().optional(),
+  // iconName: z.string().optional(), // Removed
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
 
@@ -405,7 +404,9 @@ export default function AdminPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Slug</TableHead>
+                      {/* Icon column removed 
                       <TableHead className="hidden sm:table-cell">Icon</TableHead>
+                      */}
                       <TableHead className="text-right hidden sm:table-cell">Order</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -414,7 +415,9 @@ export default function AdminPage() {
                       <TableRow key={category.id}>
                         <TableCell className="font-medium">{category.name}</TableCell>
                         <TableCell>{category.slug}</TableCell>
+                        {/* Icon cell removed
                         <TableCell className="hidden sm:table-cell">{category.iconName || 'N/A'}</TableCell>
+                        */}
                         <TableCell className="text-right hidden sm:table-cell">{category.displayOrder ?? 'N/A'}</TableCell>
                       </TableRow>
                     ))}

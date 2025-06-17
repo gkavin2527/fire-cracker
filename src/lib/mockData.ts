@@ -8,7 +8,6 @@ export const categories: Category[] = [
   { 
     id: 'sky-shots', 
     name: 'Sky Shots / Aerials', 
-    iconName: 'RocketIcon', 
     slug: 'sky-shots', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'sky fireworks',
@@ -17,7 +16,6 @@ export const categories: Category[] = [
   { 
     id: 'ground-crackers', 
     name: 'Ground Crackers', 
-    iconName: 'BombIcon', 
     slug: 'ground-crackers', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'ground firecrackers',
@@ -26,7 +24,6 @@ export const categories: Category[] = [
   { 
     id: 'sparklers', 
     name: 'Sparklers', 
-    iconName: 'SparklesIcon', 
     slug: 'sparklers', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'handheld sparklers',
@@ -35,7 +32,6 @@ export const categories: Category[] = [
   { 
     id: 'spinning-crackers', 
     name: 'Spinning Crackers', 
-    iconName: 'Disc3Icon', 
     slug: 'spinning-crackers', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'spinning fireworks',
@@ -44,7 +40,6 @@ export const categories: Category[] = [
   { 
     id: 'fancy-novelty', 
     name: 'Fancy / Novelty', 
-    iconName: 'GiftIcon', 
     slug: 'fancy-novelty', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'festive fireworks',
@@ -53,7 +48,6 @@ export const categories: Category[] = [
   { 
     id: 'kids-special', 
     name: 'Kids Special', 
-    iconName: 'SmileIcon', 
     slug: 'kids-special', 
     imageUrl: 'https://placehold.co/200x150.png', 
     imageHint: 'safe fireworks',

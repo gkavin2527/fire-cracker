@@ -8,7 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import CrackleMartLogo from '@/components/icons/CrackleMartLogo';
 import type { Category } from '@/types';
-import { getIcon } from '@/lib/iconMap';
+// import { getIcon } from '@/lib/iconMap'; // getIcon no longer needed for categories
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,11 +119,11 @@ const Header = () => {
             <DropdownMenuItem disabled>Error: {categoriesError.substring(0,100)}...</DropdownMenuItem>
           ) : categories.length > 0 ? (
             categories.map((category) => {
-              const Icon = getIcon(category.iconName);
+              // const Icon = getIcon(category.iconName); // Icon removed
               return (
                 <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
                   <DropdownMenuItem className="cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                    <Icon className="mr-2 h-4 w-4" />
+                    {/* <Icon className="mr-2 h-4 w-4" /> // Icon removed */}
                     {category.name}
                   </DropdownMenuItem>
                 </Link>

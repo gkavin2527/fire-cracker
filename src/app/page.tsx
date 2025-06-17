@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import ProductCard from '@/components/products/ProductCard';
 import type { Product, Category } from '@/types';
-import { getIcon } from '@/lib/iconMap';
+// import { getIcon } from '@/lib/iconMap'; // getIcon no longer needed for categories
 import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 
@@ -97,7 +97,7 @@ export default async function HomePage() {
         {categories.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
             {categories.map((category) => {
-              const Icon = getIcon(category.iconName);
+              // const Icon = getIcon(category.iconName); // Icon removed
               return (
                 <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
                   <Card className="relative text-center hover:shadow-xl transition-all duration-300 cursor-pointer rounded-lg border-border/60 overflow-hidden group h-40">
@@ -111,8 +111,10 @@ export default async function HomePage() {
                     />
                     <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300 z-1" />
                     <CardContent className="relative z-2 p-4 sm:p-6 flex flex-col items-center justify-center h-full">
+                      {/* Icon removed
                       <Icon className="h-10 w-10 sm:h-12 sm:w-12 mb-3 text-white group-hover:text-accent group-hover:scale-110 transition-all" />
-                      <h3 className="text-sm sm:text-base font-semibold font-headline text-primary-foreground group-hover:text-accent transition-colors">{category.name}</h3>
+                      */}
+                      <h3 className="text-base sm:text-lg font-semibold font-headline text-primary-foreground group-hover:text-accent transition-colors mt-auto">{category.name}</h3>
                     </CardContent>
                   </Card>
                 </Link>

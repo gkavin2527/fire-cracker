@@ -19,7 +19,7 @@ export interface Category {
   slug: string;
   imageUrl: string;
   imageHint: string;
-  iconName?: string; // e.g., "RocketIcon", "BombIcon" - to be mapped to Lucide components
+  // iconName?: string; // Removed
   displayOrder?: number; // For controlling display order
 }
 

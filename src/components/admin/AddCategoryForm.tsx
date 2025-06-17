@@ -14,10 +14,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Icon select removed
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
-import { iconMap } from "@/lib/iconMap";
+// import { iconMap } from "@/lib/iconMap"; // Icon map no longer needed here
 
 const generateSlug = (name: string) => {
   return name
@@ -35,7 +35,7 @@ const categoryFormSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with dashes, e.g., 'sky-shots'."),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
   imageHint: z.string().min(1, "Image hint is required.").max(50, "Image hint should be brief, max 50 chars."),
-  iconName: z.string().optional(),
+  // iconName: z.string().optional(), // Removed
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
 
@@ -52,7 +52,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting }: AddCategoryFormProp
       slug: "",
       imageUrl: "https://placehold.co/200x150.png",
       imageHint: "category image",
-      iconName: "DefaultIcon",
+      // iconName: "DefaultIcon", // Removed
       displayOrder: 0,
     },
   });
@@ -76,7 +76,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting }: AddCategoryFormProp
     }
   }
 
-  const availableIcons = Object.keys(iconMap);
+  // const availableIcons = Object.keys(iconMap); // Icons removed
 
   return (
     <Form {...form}>
@@ -133,6 +133,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting }: AddCategoryFormProp
             </FormItem>
           )}
         />
+        {/* Icon Name field removed
         <FormField
           control={form.control}
           name="iconName"
@@ -157,6 +158,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting }: AddCategoryFormProp
             </FormItem>
           )}
         />
+        */}
         <FormField
           control={form.control}
           name="displayOrder"
