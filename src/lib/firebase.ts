@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -35,17 +36,11 @@ const envVarExamples: string[] = [];
 const actualEnvVars: Record<string, string | undefined> = {};
 
 // Determine the console output function based on environment
-// Use console.error for high visibility of critical issues, especially during build/server-side.
 let consoleOutputFunction = console.error;
 if (typeof window !== 'undefined') {
-  // For client-side, console.log might be less alarming if it's a common re-import,
-  // but given the severity of this config issue, console.error is still appropriate.
-  // We'll use a flag to ensure client-side warning logs only once per session effectively.
   if (!(window as any).__FIREBASE_CONFIG_WARNING_LOGGED__) {
     (window as any).__FIREBASE_CONFIG_WARNING_LOGGED__ = true;
   } else {
-    // If already logged on client, suppress further identical warnings during HMR, etc.
-    // Set to a no-op function.
     consoleOutputFunction = () => {};
   }
 }
@@ -63,7 +58,7 @@ expectedKeys.forEach(keyName => {
     case 'appId': envVarName += 'APP_ID'; exampleValuePart += 'app_id'; break;
   }
   envVarExamples.push(`${envVarName}=${exampleValuePart}_from_firebase_console`);
-  actualEnvVars[envVarName] = process.env[envVarName]; // Store actual value for logging
+  actualEnvVars[envVarName] = process.env[envVarName];
 
   if (!firebaseConfigValues[keyName]) {
     allKeysPresent = false;
@@ -99,7 +94,6 @@ if (!allKeysPresent) {
     `appId: ${firebaseConfigValues.appId}\n` +
     `!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
   
-  // Log the warning. If on client and already warned, consoleOutputFunction is a no-op.
   consoleOutputFunction(warningMessage);
 }
 
@@ -112,18 +106,21 @@ const firebaseConfig = {
   appId: firebaseConfigValues.appId,
 };
 
+// Log the actual config being used for diagnostics
+if (typeof window !== 'undefined') {
+  console.log('[DEBUG] Firebase config loaded by app (src/lib/firebase.ts - Client):', JSON.parse(JSON.stringify(firebaseConfig)));
+} else {
+  console.log('[DEBUG] Firebase config loaded by app (src/lib/firebase.ts - Server):', JSON.parse(JSON.stringify(firebaseConfig)));
+}
+
+
 let app: FirebaseApp;
 let db;
 
-// Check if Firebase has already been initialized
 if (!getApps().length) {
   try {
-    // Only attempt to initialize if all essential keys might be present (or to let Firebase give its specific error)
-    // This check primarily helps in guiding the user with our detailed logs if basic requirements aren't met.
-    // Firebase's own `initializeApp` will throw if config is truly invalid (e.g., malformed API key).
     app = initializeApp(firebaseConfig);
   } catch (e: any) {
-    // Ensure consoleOutputFunction is console.error for this critical catch block
     const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
     criticalErrorLogger("Firebase initialization error in src/lib/firebase.ts:", e.message);
 
@@ -141,35 +138,25 @@ if (!getApps().length) {
           "is likely an empty string ''. Ensure all NEXT_PUBLIC_FIREBASE_... variables in .env.local have actual values."
         );
     }
-    // If initialization fails, and no app instance exists, this is critical.
-    // For robustness, we assign a placeholder to prevent further cascading errors here,
-    // though auth and other Firebase services will fail later.
     if (!getApps().length) {
         criticalErrorLogger("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
-        // Attempting to create a minimal app object to prevent immediate crashes on getAuth
-        // This will still fail for actual Firebase operations but might prevent some cascading JS errors.
         app = {name: '[failed-initialization]', options: {}, automaticDataCollectionEnabled: false} as FirebaseApp;
     } else {
-        app = getApps()[0]; // Should not happen if initializeApp failed and no apps were prior.
+        app = getApps()[0]; 
     }
   }
 } else {
   app = getApps()[0];
 }
 
-// The getAuth() function will throw an error (like auth/invalid-api-key)
-// if the app is not initialized correctly due to missing or invalid configuration.
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Initialize Firestore only if the app was initialized successfully (or to let Firestore give its own error)
 try {
     db = getFirestore(app);
 } catch (e: any) {
     const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
     criticalErrorLogger("Firestore initialization error in src/lib/firebase.ts:", e.message);
-    // db will remain undefined, and subsequent Firestore operations will likely fail,
-    // which should be handled by the calling code (e.g., API routes).
 }
 
 
