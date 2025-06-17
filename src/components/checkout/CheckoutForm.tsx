@@ -18,13 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { ShippingAddress, OrderConfirmationEmailInput, Order, UserProfile } from "@/types";
+import type { ShippingAddress, OrderConfirmationEmailInput, Order, UserProfile, Product } from "@/types";
 import { Send, Loader2 } from "lucide-react";
 import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confirmation-email-flow";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from '@/lib/firebase';
-import { doc, setDoc, Timestamp, collection, getDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, collection, getDoc, runTransaction } from 'firebase/firestore';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -72,11 +72,14 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
             const userProfile = userDocSnap.data() as UserProfile;
             if (userProfile.defaultShippingAddress) {
               form.reset(userProfile.defaultShippingAddress);
+            } else if (user.email) { // Pre-fill email from auth if no default address
+              form.setValue('email', user.email);
             }
+          } else if (user.email) { // Pre-fill email if no profile exists yet
+            form.setValue('email', user.email);
           }
         } catch (error) {
           console.error("Failed to fetch default shipping address:", error);
-          // Optionally, show a toast if fetching default address fails, but don't block checkout
         }
       }
     };
@@ -88,6 +91,12 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (!db) {
+      toast({ title: "Error", description: "Database not initialized. Please try again.", variant: "destructive" });
+      setIsProcessingOrder(false);
+      return;
+    }
+
     if (!user) {
       toast({
         title: "Authentication Error",
@@ -113,39 +122,68 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
     const orderId = `GKC-${Date.now()}`; 
     const shippingDetails: ShippingAddress = { ...values };
     
-    const orderData: Order = {
-      id: orderId,
-      userId: user.uid,
-      items: cartItems,
-      shippingAddress: shippingDetails,
-      totalAmount: getCartTotal(),
-      orderDate: Timestamp.now(), 
-      status: 'Pending',
-    };
-
     try {
-      if (!db) {
-        throw new Error("Firestore database is not initialized. Check Firebase configuration.");
-      }
+      // Firestore transaction to check stock and update
+      await runTransaction(db, async (transaction) => {
+        const productUpdates = [];
+
+        for (const cartItem of cartItems) {
+          const productRef = doc(db, "products", cartItem.product.id);
+          const productDoc = await transaction.get(productRef);
+
+          if (!productDoc.exists()) {
+            throw new Error(`Product ${cartItem.product.name} not found.`);
+          }
+
+          const productData = productDoc.data() as Product;
+          if (typeof productData.stock !== 'number' || productData.stock < cartItem.quantity) {
+            throw new Error(`Not enough stock for ${cartItem.product.name}. Available: ${productData.stock || 0}, Requested: ${cartItem.quantity}.`);
+          }
+          
+          productUpdates.push({
+            ref: productRef,
+            newStock: productData.stock - cartItem.quantity,
+          });
+        }
+
+        // If all stock checks passed, apply updates
+        for (const update of productUpdates) {
+          transaction.update(update.ref, { stock: update.newStock });
+        }
+      });
+
+      // If transaction is successful, stock has been updated. Now save the order.
+      const orderData: Order = {
+        id: orderId,
+        userId: user.uid,
+        items: cartItems,
+        shippingAddress: shippingDetails,
+        totalAmount: getCartTotal(),
+        orderDate: Timestamp.now(), 
+        status: 'Pending',
+      };
+      
       const ordersCollectionRef = collection(db, 'orders');
       await setDoc(doc(ordersCollectionRef, orderId), orderData);
       
       toast({
-        title: "Order Saved!",
-        description: `Your order ${orderId} has been successfully saved. Preparing confirmation email...`,
+        title: "Order Placed & Stock Updated!",
+        description: `Your order ${orderId} is confirmed. Preparing confirmation email...`,
       });
 
-    } catch (dbError: any) {
-      console.error("Failed to save order to Firestore:", dbError);
+    } catch (error: any) {
+      console.error("Failed to process order (stock check or Firestore save):", error);
       toast({
-        title: "Database Error",
-        description: `Could not save your order: ${dbError.message || 'Unknown error'}. Please try again.`,
+        title: "Order Processing Failed",
+        description: error.message || "Could not process your order. Please review your cart or try again.",
         variant: "destructive",
+        duration: 7000,
       });
       setIsProcessingOrder(false);
       return; 
     }
     
+    // Proceed with email sending only if order was successfully saved
     try {
       const emailInput: OrderConfirmationEmailInput = {
         customerName: shippingDetails.fullName,
@@ -156,7 +194,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           quantity: item.quantity, 
           price: item.product.price,
           imageUrl: item.product.imageUrl,
-          imageHint: item.product.imageHint,
+          imageHint: item.product.imageHint || 'product',
         })),
         totalAmount: getCartTotal(),
         shippingAddress: {
@@ -173,11 +211,10 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
       const emailContent = await generateOrderConfirmationEmail(emailInput);
       
+      console.log(`[CheckoutForm] Generated email for order ${orderId}. Attempting to send via API.`);
       const emailApiResponse = await fetch('/api/send-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: shippingDetails.email,
           subject: emailContent.subject,
@@ -189,23 +226,25 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         const errorData = await emailApiResponse.json();
         const apiError = new Error(errorData.error || `Failed to send email via API (status: ${emailApiResponse.status})`);
         (apiError as any).details = errorData.details;
-        (apiError as any).code = errorData.code;
+        (apiError as any).code = errorData.code; // Store Nodemailer specific code if available
         throw apiError;
       }
         
+      const emailResponseData = await emailApiResponse.json();
+      console.log(`[CheckoutForm] Email API response for order ${orderId}:`, emailResponseData);
       toast({
         title: "Order Confirmation Sent",
-        description: "Your order confirmation email has been sent successfully.",
+        description: `Email sent to ${shippingDetails.email}. Message ID: ${emailResponseData.messageId}`,
       });
 
     } catch (emailError: any) {
       console.error("[CheckoutForm] Failed to generate or send order confirmation email:", emailError);
-      const description = `Could not send order confirmation email. Your order ${orderId} was saved. Details: ${emailError.message || 'Unknown email error.'}${emailError.code ? ` (Code: ${emailError.code})` : ''}`;
+      const description = `Could not send order confirmation email for ${orderId}. Your order was saved. Details: ${emailError.message || 'Unknown email error.'}${emailError.code ? ` (Code: ${emailError.code})` : ''}`;
       toast({
         title: "Email Sending Issue",
-        description: description.substring(0, 200) + (description.length > 200 ? '...' : ''), // Keep toast concise
+        description: description.substring(0, 200) + (description.length > 200 ? '...' : ''),
         variant: "destructive",
-        duration: 7000, // Longer duration for important error
+        duration: 7000,
       });
     }
 
@@ -331,10 +370,13 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         </Form>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground text-center">
-        <p>This is a demo checkout. No real payment will be processed. Order confirmation email will be sent using Nodemailer via an API route (requires SMTP .env configuration). Orders will be saved to Firestore.</p>
+        <p>This is a demo checkout. No real payment will be processed. Stock will be updated. Order confirmation email will be attempted via an API route (requires SMTP .env configuration). Orders will be saved to Firestore.</p>
       </CardFooter>
     </Card>
   );
 };
 
 export default CheckoutForm;
+
+
+    
