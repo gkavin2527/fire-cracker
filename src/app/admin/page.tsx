@@ -33,7 +33,13 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/products');
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          const responseText = await response.text();
+          throw new Error(`Server returned non-JSON error (Status: ${response.status}): ${responseText.substring(0,100)}...`);
+        }
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       const data: Product[] = await response.json();
@@ -67,7 +73,13 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (jsonError) {
+            const responseText = await response.text();
+            throw new Error(`Server returned non-JSON error (Status: ${response.status}): ${responseText.substring(0,100)}...`);
+        }
         throw new Error(errorData.error || `Failed to add product. Status: ${response.status}`);
       }
 
@@ -99,10 +111,22 @@ export default function AdminPage() {
       const response = await fetch('/api/seed-database', {
         method: 'POST',
       });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || `Failed to seed database. Status: ${response.status}`);
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError: any) {
+        const responseText = await response.text();
+        throw new Error(`Server returned a non-JSON response (Status: ${response.status}): ${responseText.substring(0, 200)}...`);
       }
+
+      if (!response.ok) {
+        const errorMessage = result?.error || `Failed to seed database. Status: ${response.status}`;
+        const errorDetails = result?.details || "No additional details provided by the server.";
+        // Combine the general error with specific details for a more informative message
+        throw new Error(`${errorMessage} Details: ${errorDetails}`);
+      }
+
       toast({
         title: "Database Seeding Successful!",
         description: `${result.message} Categories: ${result.categoriesAdded}, Products: ${result.productsAdded}.`,
@@ -112,7 +136,7 @@ export default function AdminPage() {
       console.error('Failed to seed database:', e);
       toast({
         title: "Database Seeding Failed",
-        description: e.message || "Could not seed the database.",
+        description: e.message || "An unknown error occurred during seeding.",
         variant: "destructive",
       });
     } finally {
