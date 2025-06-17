@@ -13,7 +13,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, DatabaseZap } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2 } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +22,6 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
-  const [isSeeding, setIsSeeding] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -105,45 +104,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleSeedDatabase = async () => {
-    setIsSeeding(true);
-    try {
-      const response = await fetch('/api/seed-database', {
-        method: 'POST',
-      });
-
-      let result;
-      try {
-        result = await response.json();
-      } catch (jsonError: any) {
-        const responseText = await response.text();
-        throw new Error(`Server returned a non-JSON response (Status: ${response.status}): ${responseText.substring(0, 200)}...`);
-      }
-
-      if (!response.ok) {
-        const errorMessage = result?.error || `Failed to seed database. Status: ${response.status}`;
-        const errorDetails = result?.details || "No additional details provided by the server.";
-        // Combine the general error with specific details for a more informative message
-        throw new Error(`${errorMessage} Details: ${errorDetails}`);
-      }
-
-      toast({
-        title: "Database Seeding Successful!",
-        description: `${result.message} Categories: ${result.categoriesAdded}, Products: ${result.productsAdded}.`,
-      });
-      fetchAdminProducts(); // Refresh product list after seeding
-    } catch (e: any) {
-      console.error('Failed to seed database:', e);
-      toast({
-        title: "Database Seeding Failed",
-        description: e.message || "An unknown error occurred during seeding.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -165,19 +125,6 @@ export default function AdminPage() {
               />
             </DialogContent>
           </Dialog>
-          <Button 
-            onClick={handleSeedDatabase} 
-            disabled={isSeeding}
-            variant="outline"
-            className="border-accent text-accent-foreground hover:bg-accent/10"
-          >
-            {isSeeding ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <DatabaseZap className="mr-2 h-5 w-5" />
-            )}
-            {isSeeding ? 'Seeding...' : 'Seed Database from Mocks'}
-          </Button>
         </div>
       </div>
 
@@ -221,7 +168,7 @@ export default function AdminPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-10">No products found. Add some products or seed the database.</p>
+            <p className="text-muted-foreground text-center py-10">No products found. Add some products.</p>
           )}
         </CardContent>
       </Card>
