@@ -40,10 +40,11 @@ let consoleOutputFunction = console.error; // Default to error for server
 let hasLoggedClientWarning = false;
 
 if (typeof window !== 'undefined') { // Client-side
+  // Use a flag on the window object to ensure the warning is logged only once per client session
   if (!(window as any).__FIREBASE_CONFIG_WARNING_LOGGED__) {
     (window as any).__FIREBASE_CONFIG_WARNING_LOGGED__ = true; // Set flag after first log
   } else {
-    consoleOutputFunction = () => {}; // Suppress subsequent client-side logs
+    consoleOutputFunction = () => {}; // Suppress subsequent client-side logs for this specific warning
   }
 }
 
@@ -110,23 +111,28 @@ const firebaseConfig = {
 
 // Log the actual config being used for diagnostics
 const logConfig = (env: string) => {
+  const intendedProjectId = 'firecrackers-7d9a3'; // The project ID the user states they are using
   console.log(
-    `%c[DEBUG] Firebase config loaded by app (src/lib/firebase.ts - ${env}):%c\n` +
+    `%c[DIAGNOSTIC LOG] Firebase config loaded by app (src/lib/firebase.ts - ${env}):%c\n` +
+    `Attempted projectId: '${firebaseConfig.projectId}' (Is this '${intendedProjectId}'? If not, .env.local is wrong for this project!)\n` +
+    `Attempted authDomain: '${firebaseConfig.authDomain}'\n` +
+    `Full Config: ${JSON.stringify(firebaseConfig, null, 2)}\n` +
     `%c>>> IMPORTANT FOR 'auth/unauthorized-domain' DEBUGGING <<<\n` +
-    `>>> Verify this 'projectId' and 'authDomain' MATCH your Firebase project ('firecrackers-7d9a3') settings where 'localhost' is authorized. <<<\n`+
-    `Config: ${JSON.stringify(firebaseConfig, null, 2)}`,
-    'color: blue; font-weight: bold;',
-    'color: inherit;',
+    `>>> Verify this 'projectId' and 'authDomain' MATCH your Firebase project ('${intendedProjectId}') settings where 'localhost' is authorized. <<<\n`+
+    `>>> If the 'Attempted projectId' above IS NOT '${intendedProjectId}', your .env.local file has the WRONG Firebase project credentials, or is not being loaded. <<<`,
+    'color: #FF4500; font-weight: bold; font-size: 1.1em;', // More prominent color
+    'color: inherit;', // Reset color for the rest of the message
     'color: red; font-weight: bold;'
   );
 };
 
+let hasLoggedClientConfig = false;
 if (typeof window !== 'undefined') {
-  // Client-side: Log only once to avoid spamming if HMR or other re-renders occur.
-  if (!hasLoggedClientWarning && !(window as any).__FIREBASE_CLIENT_CONFIG_LOGGED__) {
+  // Client-side: Log only once to avoid spamming if HMR or other re-renders occur for this specific log.
+  if (!(window as any).__FIREBASE_CLIENT_CONFIG_DIAGNOSTIC_LOGGED__) {
     logConfig('Client');
-    (window as any).__FIREBASE_CLIENT_CONFIG_LOGGED__ = true;
-    hasLoggedClientWarning = true; // Use a module-level flag as well
+    (window as any).__FIREBASE_CLIENT_CONFIG_DIAGNOSTIC_LOGGED__ = true;
+    hasLoggedClientConfig = true;
   }
 } else {
   // Server-side: Log every time the module is initialized (typically once per server start/restart)
@@ -158,9 +164,9 @@ if (!getApps().length) {
           "is likely an empty string ''. Ensure all NEXT_PUBLIC_FIREBASE_... variables in .env.local have actual values."
         );
     }
-    if (!getApps().length) {
+    // If initialization fails, ensure 'app' is at least a dummy object to prevent further errors if accessed.
+    if (!getApps().length) { // Check again in case some partial initialization occurred
         criticalErrorLogger("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
-        // Provide a dummy app object to prevent further crashes if auth or db are accessed
         app = {name: '[failed-initialization]', options: {}, automaticDataCollectionEnabled: false} as FirebaseApp;
     } else {
         app = getApps()[0]; 
@@ -170,7 +176,7 @@ if (!getApps().length) {
   app = getApps()[0];
 }
 
-const auth = getAuth(app);
+const auth = getAuth(app); // This might throw if app is the dummy object and strict checks are in place internally.
 const googleProvider = new GoogleAuthProvider();
 
 try {
@@ -179,7 +185,9 @@ try {
         db = getFirestore(app);
     } else {
         db = null; // Explicitly set to null if app initialization failed
-        console.error("Firestore NOT initialized because Firebase app initialization failed.");
+        if (app.name === '[failed-initialization]') { // Only log this specific message if we used the dummy app
+          console.error("Firestore NOT initialized because Firebase app initialization failed catastrophically.");
+        }
     }
 } catch (e: any) {
     const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
