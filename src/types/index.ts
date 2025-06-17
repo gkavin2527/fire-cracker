@@ -50,6 +50,10 @@ export interface Order {
 // Type for the product form, excluding fields that are auto-generated or not part of creation
 export type ProductFormData = Omit<Product, 'id' | 'rating'>;
 
+// Type for the category form
+export type CategoryFormData = Omit<Category, 'id'>;
+
+
 // Type for the order confirmation email generation
 export interface OrderConfirmationEmailInput {
   customerName: string;
