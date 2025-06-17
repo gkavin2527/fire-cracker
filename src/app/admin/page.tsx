@@ -13,7 +13,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2 } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, DatabaseZap } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
+  const [isSeeding, setIsSeeding] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -74,10 +75,11 @@ export default function AdminPage() {
       setProducts(prevProducts => [...prevProducts, addedProduct]);
       toast({
         title: "Product Added!",
-        description: `${addedProduct.name} has been successfully added to the database.`,
+        description: `${addedProduct.name} has been successfully added.`,
       });
-      setIsAddProductDialogOpen(false); // Close dialog on success
-      return true; // Indicate success
+      setIsAddProductDialogOpen(false); 
+      fetchAdminProducts(); // Refresh product list
+      return true; 
     } catch (e: any) {
       console.error('Failed to add product:', e);
       toast({
@@ -85,32 +87,74 @@ export default function AdminPage() {
         description: e.message || "Could not save the product to the server.",
         variant: "destructive",
       });
-      return false; // Indicate failure
+      return false; 
     } finally {
       setIsSubmittingProduct(false);
     }
   };
 
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true);
+    try {
+      const response = await fetch('/api/seed-database', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to seed database. Status: ${response.status}`);
+      }
+      toast({
+        title: "Database Seeding Successful!",
+        description: `${result.message} Categories: ${result.categoriesAdded}, Products: ${result.productsAdded}.`,
+      });
+      fetchAdminProducts(); // Refresh product list after seeding
+    } catch (e: any) {
+      console.error('Failed to seed database:', e);
+      toast({
+        title: "Database Seeding Failed",
+        description: e.message || "Could not seed the database.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
-        <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
-            </DialogHeader>
-            <AddProductForm 
-              onSubmitProduct={handleAddProduct}
-              isSubmitting={isSubmittingProduct}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2 flex-wrap">
+          <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <PlusCircle className="mr-2 h-5 w-5" /> Add New Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
+              </DialogHeader>
+              <AddProductForm 
+                onSubmitProduct={handleAddProduct}
+                isSubmitting={isSubmittingProduct}
+              />
+            </DialogContent>
+          </Dialog>
+          <Button 
+            onClick={handleSeedDatabase} 
+            disabled={isSeeding}
+            variant="outline"
+            className="border-accent text-accent-foreground hover:bg-accent/10"
+          >
+            {isSeeding ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <DatabaseZap className="mr-2 h-5 w-5" />
+            )}
+            {isSeeding ? 'Seeding...' : 'Seed Database from Mocks'}
+          </Button>
+        </div>
       </div>
 
       <Card className="shadow-md rounded-lg border-border/60">
@@ -153,7 +197,7 @@ export default function AdminPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-10">No products found. Add some products to get started!</p>
+            <p className="text-muted-foreground text-center py-10">No products found. Add some products or seed the database.</p>
           )}
         </CardContent>
       </Card>
@@ -167,7 +211,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This section will display user information once a backend and authentication are implemented.
+              This section will display user information once user roles and management features are implemented.
             </p>
           </CardContent>
         </Card>
@@ -180,7 +224,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This section will display order information once a backend is integrated.
+              This section will display order information once a backend order processing system is integrated.
             </p>
           </CardContent>
         </Card>
