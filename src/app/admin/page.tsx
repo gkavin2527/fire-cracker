@@ -176,7 +176,19 @@ export default function AdminPage() {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date(data.orderDate);
-        fetchedOrders.push({ id: doc.id, ...data, orderDate } as Order);
+        // Ensure all monetary values are numbers, defaulting to 0 if not present or invalid
+        const subtotal = typeof data.subtotal === 'number' ? data.subtotal : 0;
+        const shippingCost = typeof data.shippingCost === 'number' ? data.shippingCost : 0;
+        const grandTotal = typeof data.grandTotal === 'number' ? data.grandTotal : 0;
+
+        fetchedOrders.push({ 
+            id: doc.id, 
+            ...data, 
+            orderDate,
+            subtotal,
+            shippingCost,
+            grandTotal 
+        } as Order);
       });
       setOrders(fetchedOrders);
     } catch (e: any) {
@@ -206,7 +218,17 @@ export default function AdminPage() {
       const querySnapshot = await getDocs(q);
       const fetchedHeroImages: HeroImage[] = [];
       querySnapshot.forEach((doc) => {
-        fetchedHeroImages.push({ id: doc.id, ...doc.data() } as HeroImage);
+        const data = doc.data();
+        const heroImage: HeroImage = {
+            id: doc.id,
+            imageUrl: data.imageUrl || 'https://placehold.co/1200x400.png', // Default if missing
+            altText: data.altText || 'Default Alt Text', // Default
+            dataAiHint: data.dataAiHint || 'default hint', // Default
+            displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0, // Ensure number, default to 0
+            isActive: typeof data.isActive === 'boolean' ? data.isActive : true, // Ensure boolean, default to true
+            linkUrl: data.linkUrl || '', // Default to empty string
+        };
+        fetchedHeroImages.push(heroImage);
       });
       setHeroImages(fetchedHeroImages);
     } catch (e: any) {
@@ -1095,3 +1117,6 @@ export default function AdminPage() {
     </div>
   );
 }
+
+
+    

@@ -38,7 +38,8 @@ interface AddHeroImageFormProps {
 const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEditing = false }: AddHeroImageFormProps) => {
   const form = useForm<HeroImageFormData>({
     resolver: zodResolver(heroImageFormSchema),
-    defaultValues: initialData || {
+    // Default values are set here and will be overridden by useEffect if initialData is present for editing
+    defaultValues: {
       imageUrl: "https://placehold.co/1200x400.png",
       altText: "Hero Image",
       dataAiHint: "hero banner",
@@ -49,9 +50,16 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset(initialData);
-    } else {
+    if (isEditing && initialData) {
+      form.reset({
+        imageUrl: initialData.imageUrl,
+        altText: initialData.altText,
+        dataAiHint: initialData.dataAiHint,
+        displayOrder: initialData.displayOrder ?? 0, // Fallback to 0 if undefined
+        isActive: initialData.isActive ?? true,   // Fallback to true if undefined
+        linkUrl: initialData.linkUrl || "",
+      });
+    } else if (!isEditing) { // Reset to defaults for "Add New"
       form.reset({
         imageUrl: "https://placehold.co/1200x400.png",
         altText: "Hero Image",
@@ -61,7 +69,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
         linkUrl: "",
       });
     }
-  }, [initialData, form]);
+  }, [initialData, isEditing, form]);
 
   async function onSubmit(values: HeroImageFormData) {
     const success = await onSubmitHeroImage(values);
@@ -126,7 +134,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
             <FormItem>
               <FormLabel>Link URL (Optional, e.g., /products/category-slug)</FormLabel>
               <FormControl>
-                <Input placeholder="/products/sky-shots" {...field} />
+                <Input placeholder="/products/sky-shots" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -183,3 +191,6 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
 };
 
 export default AddHeroImageForm;
+
+
+    
