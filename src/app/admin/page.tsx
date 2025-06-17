@@ -17,6 +17,21 @@ import { Package, Users, ShoppingBag, PlusCircle, Loader2 } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase'; // Import Firestore db instance
+import { collection, addDoc } from 'firebase/firestore'; // Import Firestore functions
+import * as z from "zod";
+
+// ProductFormSchema moved here from API route for client-side validation before direct DB write
+const ProductFormSchema = z.object({
+  name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
+  description: z.string().min(10, { message: "Description must be at least 10 characters." }),
+  price: z.coerce.number().positive({ message: "Price must be a positive number." }),
+  category: z.string().min(1, { message: "Please select a category." }),
+  imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
+  imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(),
+  stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
+});
+
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -60,45 +75,43 @@ export default function AdminPage() {
     fetchAdminProducts();
   }, []);
 
-  const handleAddProduct = async (newProductData: Omit<Product, 'id' | 'rating'>) => {
+  const handleAddProduct = async (productDataFromForm: Omit<Product, 'id' | 'rating'>) => {
     setIsSubmittingProduct(true);
     try {
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newProductData),
-      });
-
-      if (!response.ok) {
-        let apiErrorMessage = `Failed to add product. Status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.error) {
-            apiErrorMessage = errorData.error;
-            if (errorData.details) {
-              apiErrorMessage += ` Details: ${errorData.details}`;
-            }
-            if (errorData.firestoreErrorCode) {
-              apiErrorMessage += ` (Code: ${errorData.firestoreErrorCode})`;
-            }
-          }
-        } catch (jsonError) {
-          // If response is not JSON, try to get text
-          try {
-            const responseText = await response.text();
-            if (responseText) {
-              apiErrorMessage = `API error (Status: ${response.status}): ${responseText.substring(0, 250)}${responseText.length > 250 ? "..." : ""}`;
-            }
-          } catch (textError) {
-            // apiErrorMessage is already initialized
-          }
-        }
-        throw new Error(apiErrorMessage);
+      // Validate data using Zod schema (same as API route had)
+      const validation = ProductFormSchema.safeParse(productDataFromForm);
+      if (!validation.success) {
+        // Construct an error message from Zod errors
+        const errorMessages = Object.values(validation.error.flatten().fieldErrors)
+                                  .map(errArray => errArray?.join(', '))
+                                  .filter(Boolean)
+                                  .join('; ');
+        throw new Error(`Invalid product data: ${errorMessages}`);
       }
+      
+      const validatedData = validation.data;
 
-      const addedProduct: Product = await response.json();
+      const newProductData: Omit<Product, 'id' | 'rating'> & { rating?: number } = {
+        name: validatedData.name,
+        description: validatedData.description,
+        price: validatedData.price,
+        category: validatedData.category,
+        imageUrl: validatedData.imageUrl || `https://placehold.co/400x300.png`,
+        imageHint: validatedData.imageHint || validatedData.name.split(' ').slice(0,2).join(' ') || 'product image',
+        stock: validatedData.stock ?? 0,
+        // rating can be omitted or set to a default like 0 or null if desired
+        // rating: 0, 
+      };
+
+      if (!db) {
+        throw new Error("Firestore database is not initialized. Check Firebase configuration.");
+      }
+      
+      const productsCollectionRef = collection(db, 'products');
+      const docRef = await addDoc(productsCollectionRef, newProductData);
+
+      const addedProduct: Product = { id: docRef.id, ...newProductData, rating: newProductData.rating ?? 0 }; // Add rating default if not present
+      
       setProducts(prevProducts => [...prevProducts, addedProduct]);
       toast({
         title: "Product Added!",
@@ -107,11 +120,19 @@ export default function AdminPage() {
       setIsAddProductDialogOpen(false);
       fetchAdminProducts(); // Refresh product list
       return true;
+
     } catch (e: any) {
-      console.error('Failed to add product:', e); // Log the full error object for more details
+      console.error('Failed to add product directly to Firestore:', e);
+      let errorMessage = e.message || "Could not save the product.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+      } else if (e.message && e.message.includes('Invalid product data')) {
+          errorMessage = e.message; // Use the Zod validation error message
+      }
+      
       toast({
         title: "Error Adding Product",
-        description: e.message || "Could not save the product to the server.",
+        description: errorMessage,
         variant: "destructive",
       });
       return false;
@@ -119,6 +140,7 @@ export default function AdminPage() {
       setIsSubmittingProduct(false);
     }
   };
+
 
   return (
     <div className="space-y-8">
@@ -218,3 +240,4 @@ export default function AdminPage() {
       </div>
     </div>
   );
+}

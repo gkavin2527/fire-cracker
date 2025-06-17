@@ -50,6 +50,9 @@ export async function GET() {
   }
 }
 
+// ProductFormSchema is no longer used here for POST as client handles validation for direct DB write
+// Keeping the schema definition here if this API route is ever used for POST from other sources,
+// or for reference.
 const ProductFormSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
@@ -60,11 +63,16 @@ const ProductFormSchema = z.object({
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
+// The POST handler is now NOT USED by the admin page's "Add Product" form.
+// It's kept here in case other parts of the system might use it, or for future use.
+// If it were to be used, it would need a mechanism to authenticate requests
+// if Firestore rules require authentication for writes via this server-side route.
 export async function POST(request: Request) {
   if (!db) {
     console.error("Firestore database is not initialized in /api/products POST.");
     return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
   }
+  console.warn("/api/products POST endpoint was called. Note: Admin page now writes products directly to Firestore.");
   try {
     const body = await request.json();
     const validation = ProductFormSchema.safeParse(body);
