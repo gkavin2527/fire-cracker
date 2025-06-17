@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -32,7 +33,7 @@ const CartItemCard = ({ item }: CartItemCardProps) => {
         <Link href={`/products/${item.product.id}`} passHref>
            <h3 className="text-base sm:text-lg font-semibold font-headline hover:text-primary transition-colors">{item.product.name}</h3>
         </Link>
-        <p className="text-sm text-muted-foreground">Price: ${item.product.price.toFixed(2)}</p>
+        <p className="text-sm text-muted-foreground">Price: ₹{item.product.price.toFixed(2)}</p>
         <div className="flex items-center mt-2">
           <Button 
             variant="outline" 
@@ -62,7 +63,7 @@ const CartItemCard = ({ item }: CartItemCardProps) => {
         </div>
       </div>
       <div className="text-right">
-        <p className="text-base sm:text-lg font-semibold text-primary">${(item.product.price * item.quantity).toFixed(2)}</p>
+        <p className="text-base sm:text-lg font-semibold text-primary">₹{(item.product.price * item.quantity).toFixed(2)}</p>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -78,3 +79,4 @@ const CartItemCard = ({ item }: CartItemCardProps) => {
 };
 
 export default CartItemCard;
+

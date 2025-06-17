@@ -54,7 +54,7 @@ const CheckoutPage = () => {
                       <p className="font-semibold">{item.product.name}</p>
                       <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
-                    <p className="font-semibold text-primary">${(item.product.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-semibold text-primary">₹{(item.product.price * item.quantity).toFixed(2)}</p>
                   </li>
                 ))}
               </ul>
@@ -64,16 +64,16 @@ const CheckoutPage = () => {
             <div className="mt-6 pt-4 border-t space-y-2">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping:</span>
-                <span>${shippingCost.toFixed(2)}</span>
+                <span>₹{shippingCost.toFixed(2)}</span>
               </div>
               <hr className="my-1 border-border/40"/>
               <div className="flex justify-between font-bold text-lg">
                 <span>Grand Total:</span>
-                <span>${grandTotal.toFixed(2)}</span>
+                <span>₹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </CardContent>
@@ -84,3 +84,4 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
+

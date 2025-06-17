@@ -5,7 +5,7 @@ import type { CartItem, Product } from '@/types';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
-const SHIPPING_COST_FLAT_RATE = 5.00; // Flat shipping rate
+const SHIPPING_COST_FLAT_RATE = 50.00; // Flat shipping rate in INR
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -123,3 +123,4 @@ export const useCart = () => {
   }
   return context;
 };
+

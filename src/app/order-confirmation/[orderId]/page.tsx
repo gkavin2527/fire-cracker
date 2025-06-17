@@ -92,23 +92,23 @@ const OrderConfirmationPage = () => {
                     </div>
                     <span>{item.product.name} (x{item.quantity})</span>
                   </div>
-                  <span className="font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
+                  <span className="font-medium">₹{(item.product.price * item.quantity).toFixed(2)}</span>
                 </li>
               ))}
             </ul>
             <div className="mt-4 pt-4 border-t space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-medium">${orderDetails.subtotal.toFixed(2)}</span>
+                <span className="font-medium">₹{orderDetails.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Shipping:</span>
-                <span className="font-medium">${orderDetails.shippingCost.toFixed(2)}</span>
+                <span className="font-medium">₹{orderDetails.shippingCost.toFixed(2)}</span>
               </div>
               <hr className="my-1 border-border/40"/>
               <div className="flex justify-between font-bold text-lg">
                 <span>Grand Total:</span>
-                <span>${orderDetails.grandTotal.toFixed(2)}</span>
+                <span>₹{orderDetails.grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -136,3 +136,4 @@ const OrderConfirmationPage = () => {
 };
 
 export default OrderConfirmationPage;
+

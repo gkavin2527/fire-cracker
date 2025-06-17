@@ -291,7 +291,7 @@ const AccountPage = () => {
                         </Link>
                       </TableCell>
                       <TableCell>{format(order.orderDate, 'MMM dd, yyyy HH:mm')}</TableCell>
-                      <TableCell className="text-right font-medium">${order.grandTotal.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-medium">₹{order.grandTotal.toFixed(2)}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className={`${statusColors[order.status]} text-xs px-2 py-0.5 rounded-full`}>
                           {order.status}
@@ -328,3 +328,4 @@ const AccountPage = () => {
 };
 
 export default AccountPage;
+

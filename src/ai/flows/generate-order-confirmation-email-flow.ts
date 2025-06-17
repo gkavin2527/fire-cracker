@@ -20,13 +20,13 @@ const OrderConfirmationEmailInputSchema = z.object({
   items: z.array(z.object({
     name: z.string().describe('Name of the product.'),
     quantity: z.number().int().positive().describe('Quantity of the product ordered.'),
-    price: z.number().positive().describe('Price per unit of the product.'),
+    price: z.number().positive().describe('Price per unit of the product in INR.'),
     imageUrl: z.string().url().describe('URL of the product image.'),
     imageHint: z.string().optional().describe('Hint for AI if image is placeholder.'),
   })).min(1).describe('An array of items included in the order.'),
-  subtotal: z.number().positive().describe('The subtotal amount for the items.'),
-  shippingCost: z.number().min(0).describe('The cost of shipping for the order.'),
-  grandTotal: z.number().positive().describe('The total amount of the order, including subtotal and shipping.'),
+  subtotal: z.number().positive().describe('The subtotal amount for the items in INR.'),
+  shippingCost: z.number().min(0).describe('The cost of shipping for the order in INR.'),
+  grandTotal: z.number().positive().describe('The total amount of the order, including subtotal and shipping, in INR.'),
   shippingAddress: z.object({
     fullName: z.string().describe('Full name for shipping.'),
     addressLine1: z.string().describe('Primary line of the shipping address.'),
@@ -54,15 +54,15 @@ const prompt = ai.definePrompt({
   output: { schema: OrderConfirmationEmailOutputSchema },
   prompt: `
     You are an expert e-commerce assistant for a shop named "{{shopName}}".
-    Your task is to generate a friendly, professional, and visually appealing HTML order confirmation email.
+    Your task is to generate a friendly, professional, and visually appealing HTML order confirmation email in Indian Rupees (₹).
 
     Order Details:
     - Order ID: {{orderId}}
     - Customer Name: {{customerName}}
     - Customer Email: {{customerEmail}}
-    - Subtotal: \${{subtotal}}
-    - Shipping Cost: \${{shippingCost}}
-    - Grand Total: \${{grandTotal}}
+    - Subtotal: ₹{{subtotal}}
+    - Shipping Cost: ₹{{shippingCost}}
+    - Grand Total: ₹{{grandTotal}}
 
     Shipping Address:
     - Name: {{shippingAddress.fullName}}
@@ -72,7 +72,7 @@ const prompt = ai.definePrompt({
 
     Items Ordered:
     {{#each items}}
-    - {{quantity}} x {{name}} @ \${{price}} each
+    - {{quantity}} x {{name}} @ ₹{{price}} each
     {{/each}}
 
     Instructions for the Email Content:
@@ -83,9 +83,9 @@ const prompt = ai.definePrompt({
         *   Clearly state that their order #{{orderId}} is confirmed.
         *   Provide a summary of the order, including:
             *   Order ID.
-            *   Items purchased (name, quantity, price per item, total price for item line).
+            *   Items purchased (name, quantity, price per item in INR, total price for item line in INR).
             *   You can display item images using a table or divs for layout. Use {{items.imageUrl}} for the image source. Ensure images are reasonably sized (e.g., width="80").
-            *   Subtotal, Shipping Cost, and Grand Total. Ensure this cost breakdown is clear.
+            *   Subtotal, Shipping Cost, and Grand Total (all in INR, using the ₹ symbol). Ensure this cost breakdown is clear.
         *   Display the shipping address clearly.
         *   Mention that they will receive another email when their order ships (if applicable).
         *   Include a closing, like "Thanks for shopping with us!" or "We appreciate your business!".
@@ -96,7 +96,7 @@ const prompt = ai.definePrompt({
         *   Make it visually appealing. Consider using a simple table structure for order items if it helps with layout in emails.
         *   Ensure good contrast and readability. Primary color for the shop could be #E63946 if you need a brand color.
     4.  **Do not include any placeholder images like 'placehold.co' in the final email.** If an item's imageUrl points to a placeholder, describe the item without an image or use a generic product icon if you can generate/find a suitable one (but prefer no image over a bad placeholder in an email). For this task, if an item has an image, try to include it.
-    5.  Be polite and professional.
+    5.  Be polite and professional. Ensure all monetary values are prefixed with the Indian Rupee symbol (₹).
 
     Generate the subject and htmlBody fields according to the OrderConfirmationEmailOutputSchema.
   `,
@@ -138,3 +138,4 @@ const orderConfirmationEmailFlow = ai.defineFlow(
 );
 
 export type { FlowInput as OrderConfirmationEmailInput, FlowOutput as OrderConfirmationEmailOutput };
+

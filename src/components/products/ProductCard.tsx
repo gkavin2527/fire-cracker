@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -37,7 +38,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </Link>
         <CardDescription className="text-sm text-muted-foreground mb-2 h-10 overflow-hidden">{product.description.substring(0,60)}...</CardDescription>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xl font-bold text-primary font-headline">${product.price.toFixed(2)}</p>
+          <p className="text-xl font-bold text-primary font-headline">₹{product.price.toFixed(2)}</p>
           {product.rating && (
             <div className="flex items-center text-sm text-amber-500">
               <Star className="w-4 h-4 mr-1 fill-current" />
@@ -60,3 +61,4 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
+

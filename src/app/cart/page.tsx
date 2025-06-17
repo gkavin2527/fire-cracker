@@ -49,16 +49,16 @@ const CartPage = () => {
             <CardContent className="space-y-3">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal ({itemCount} items)</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
-                <span>${shippingCost.toFixed(2)}</span>
+                <span>₹{shippingCost.toFixed(2)}</span>
               </div>
               <hr className="my-2 border-border/60"/>
               <div className="flex justify-between text-xl font-bold">
                 <span>Grand Total</span>
-                <span>${grandTotal.toFixed(2)}</span>
+                <span>₹{grandTotal.toFixed(2)}</span>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-3">
@@ -79,3 +79,4 @@ const CartPage = () => {
 };
 
 export default CartPage;
+

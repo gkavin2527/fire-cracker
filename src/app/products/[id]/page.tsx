@@ -93,7 +93,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
               <CardDescription className="text-base text-muted-foreground leading-relaxed">{product.description}</CardDescription>
               
               <div className="flex items-center space-x-4">
-                <p className="text-4xl font-bold text-primary font-headline">${product.price.toFixed(2)}</p>
+                <p className="text-4xl font-bold text-primary font-headline">₹{product.price.toFixed(2)}</p>
                 {product.rating && (
                   <div className="flex items-center text-lg text-amber-500">
                     {[...Array(Math.floor(product.rating))].map((_, i) => (
@@ -145,3 +145,4 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     </div>
   );
 }
+

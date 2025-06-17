@@ -152,9 +152,9 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price ($)</FormLabel>
+                <FormLabel>Price (₹)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="19.99" {...field} />
+                  <Input type="number" step="0.01" placeholder="199.99" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

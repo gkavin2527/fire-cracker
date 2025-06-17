@@ -119,9 +119,9 @@ const OrderDetailsDialog = ({ order, isOpen, onClose, onUpdateStatus, isUpdating
             <div>
                 <h3 className="text-lg font-semibold mb-2 font-headline flex items-center"><Receipt className="mr-2 h-5 w-5 text-primary/80" />Cost Summary</h3>
                 <div className="text-sm p-3 bg-muted/50 rounded-md space-y-1 border">
-                    <p><strong className="font-medium">Subtotal:</strong> ${order.subtotal.toFixed(2)}</p>
-                    <p><strong className="font-medium">Shipping:</strong> ${order.shippingCost.toFixed(2)}</p>
-                    <p><strong className="font-medium text-primary">Grand Total:</strong> <span className="text-lg">${order.grandTotal.toFixed(2)}</span></p>
+                    <p><strong className="font-medium">Subtotal:</strong> ₹{order.subtotal.toFixed(2)}</p>
+                    <p><strong className="font-medium">Shipping:</strong> ₹{order.shippingCost.toFixed(2)}</p>
+                    <p><strong className="font-medium text-primary">Grand Total:</strong> <span className="text-lg">₹{order.grandTotal.toFixed(2)}</span></p>
                 </div>
             </div>
           </div>
@@ -184,8 +184,8 @@ const OrderDetailsDialog = ({ order, isOpen, onClose, onUpdateStatus, isUpdating
                         </TableCell>
                         <TableCell className="font-medium py-1.5">{item.product.name}</TableCell>
                         <TableCell className="text-center py-1.5">{item.quantity}</TableCell>
-                        <TableCell className="text-right py-1.5">${item.product.price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right py-1.5">${(item.product.price * item.quantity).toFixed(2)}</TableCell>
+                        <TableCell className="text-right py-1.5">₹{item.product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right py-1.5">₹{(item.product.price * item.quantity).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -204,3 +204,4 @@ const OrderDetailsDialog = ({ order, isOpen, onClose, onUpdateStatus, isUpdating
 };
 
 export default OrderDetailsDialog;
+
