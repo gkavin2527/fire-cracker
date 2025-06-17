@@ -1,57 +1,67 @@
+
 import type { Product, Category } from '@/types';
-import { Rocket, Bomb, Sparkles, Disc3, Gift, Smile } from 'lucide-react';
+// Lucide icons are now primarily managed by iconMap.tsx for categories from API
+// Keeping direct imports if other mock data sections might use them, or for fallback type safety.
+// import { Rocket, Bomb, Sparkles, Disc3, Gift, Smile } from 'lucide-react';
 
 export const categories: Category[] = [
   { 
     id: 'sky-shots', 
     name: 'Sky Shots / Aerials', 
-    icon: Rocket, 
+    iconName: 'RocketIcon', 
     slug: 'sky-shots', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'sky fireworks' 
+    imageHint: 'sky fireworks',
+    displayOrder: 1
   },
   { 
     id: 'ground-crackers', 
     name: 'Ground Crackers', 
-    icon: Bomb, 
+    iconName: 'BombIcon', 
     slug: 'ground-crackers', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'ground firecrackers' 
+    imageHint: 'ground firecrackers',
+    displayOrder: 2
   },
   { 
     id: 'sparklers', 
     name: 'Sparklers', 
-    icon: Sparkles, 
+    iconName: 'SparklesIcon', 
     slug: 'sparklers', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'handheld sparklers' 
+    imageHint: 'handheld sparklers',
+    displayOrder: 3
   },
   { 
     id: 'spinning-crackers', 
     name: 'Spinning Crackers', 
-    icon: Disc3, 
+    iconName: 'Disc3Icon', 
     slug: 'spinning-crackers', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'spinning fireworks' 
+    imageHint: 'spinning fireworks',
+    displayOrder: 4
   },
   { 
     id: 'fancy-novelty', 
     name: 'Fancy / Novelty', 
-    icon: Gift, 
+    iconName: 'GiftIcon', 
     slug: 'fancy-novelty', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'festive fireworks' 
+    imageHint: 'festive fireworks',
+    displayOrder: 5
   },
   { 
     id: 'kids-special', 
     name: 'Kids Special', 
-    icon: Smile, 
+    iconName: 'SmileIcon', 
     slug: 'kids-special', 
     imageUrl: 'https://placehold.co/200x150.png', 
-    imageHint: 'safe fireworks' 
+    imageHint: 'safe fireworks',
+    displayOrder: 6
   },
 ];
 
+// Product data remains unchanged for now, still mock.
 export const products: Product[] = [
   // Sky Shots
   {

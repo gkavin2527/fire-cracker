@@ -1,18 +1,18 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card'; // Removed CardHeader, CardTitle as they are not directly used here for categories
+import { Card, CardContent } from '@/components/ui/card';
 import ProductCard from '@/components/products/ProductCard';
-import { categories } from '@/lib/mockData'; // Categories still from mockData for now
-import type { Product } from '@/types';
-import { ArrowRight, Gift } from 'lucide-react';
+import type { Product, Category } from '@/types';
+import { getIcon } from '@/lib/iconMap';
+import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 async function getProducts(): Promise<Product[]> {
   try {
-    // Construct the full URL for fetching, especially important for server-side environments
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-    const res = await fetch(`${appUrl}/api/products`, { cache: 'no-store' }); 
+    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' }); 
     
     if (!res.ok) {
       console.error("Failed to fetch products for homepage:", res.status, await res.text());
@@ -26,9 +26,25 @@ async function getProducts(): Promise<Product[]> {
   }
 }
 
+async function getCategories(): Promise<Category[]> {
+  try {
+    const res = await fetch(`${APP_URL}/api/categories`, { cache: 'no-store' });
+    if (!res.ok) {
+      console.error("Failed to fetch categories for homepage:", res.status, await res.text());
+      return [];
+    }
+    const categories: Category[] = await res.json();
+    return categories;
+  } catch (error) {
+    console.error("Error fetching categories for homepage:", error);
+    return [];
+  }
+}
+
 export default async function HomePage() {
   const allProducts = await getProducts();
   const featuredProducts = allProducts.slice(0, 4);
+  const categories = await getCategories();
 
   return (
     <div className="space-y-12">
@@ -55,30 +71,34 @@ export default async function HomePage() {
       {/* Categories Section */}
       <section>
         <h2 className="text-3xl font-bold text-center mb-8 font-headline">Browse by Category</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-          {categories.map((category) => {
-            const Icon = category.icon || Gift;
-            return (
-              <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
-                <Card className="relative text-center hover:shadow-xl transition-all duration-300 cursor-pointer rounded-lg border-border/60 overflow-hidden group h-40">
-                  <Image
-                    src={category.imageUrl}
-                    alt={category.name}
-                    layout="fill"
-                    objectFit="cover"
-                    className="transition-transform duration-500 group-hover:scale-110 z-0"
-                    data-ai-hint={category.imageHint}
-                  />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300 z-1" />
-                  <CardContent className="relative z-2 p-4 sm:p-6 flex flex-col items-center justify-center h-full">
-                    <Icon className="h-10 w-10 sm:h-12 sm:w-12 mb-3 text-white group-hover:text-accent group-hover:scale-110 transition-all" />
-                    <h3 className="text-sm sm:text-base font-semibold font-headline text-primary-foreground group-hover:text-accent transition-colors">{category.name}</h3>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        {categories.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+            {categories.map((category) => {
+              const Icon = getIcon(category.iconName);
+              return (
+                <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
+                  <Card className="relative text-center hover:shadow-xl transition-all duration-300 cursor-pointer rounded-lg border-border/60 overflow-hidden group h-40">
+                    <Image
+                      src={category.imageUrl}
+                      alt={category.name}
+                      layout="fill"
+                      objectFit="cover"
+                      className="transition-transform duration-500 group-hover:scale-110 z-0"
+                      data-ai-hint={category.imageHint}
+                    />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-300 z-1" />
+                    <CardContent className="relative z-2 p-4 sm:p-6 flex flex-col items-center justify-center h-full">
+                      <Icon className="h-10 w-10 sm:h-12 sm:w-12 mb-3 text-white group-hover:text-accent group-hover:scale-110 transition-all" />
+                      <h3 className="text-sm sm:text-base font-semibold font-headline text-primary-foreground group-hover:text-accent transition-colors">{category.name}</h3>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center">Could not load categories or no categories available.</p>
+        )}
       </section>
 
       {/* Featured Products Section */}

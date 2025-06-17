@@ -2,12 +2,13 @@
 "use client";
 
 import Link from 'next/link';
-import { ShoppingCart, Home, Package, Menu, SparklesIcon, UserCircle, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Home, Package, Menu, SparklesIcon, UserCircle, LogIn, LogOut, ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import CrackleMartLogo from '@/components/icons/CrackleMartLogo';
-import { categories } from '@/lib/mockData';
+import type { Category } from '@/types';
+import { getIcon } from '@/lib/iconMap';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const NavLink = ({ href, children, onClick }: { href: string; children: React.ReactNode, onClick?: () => void }) => (
@@ -31,10 +32,33 @@ const NavLink = ({ href, children, onClick }: { href: string; children: React.Re
 
 const Header = () => {
   const { getItemCount } = useCart();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const itemCount = getItemCount();
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setCategoriesLoading(true);
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data: Category[] = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories for header:", error);
+        // Keep empty or mock categories if fetch fails
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -58,20 +82,29 @@ const Header = () => {
       <DropdownMenu onOpenChange={(open) => { if(!open) setMobileMenuOpen(false)}}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="text-foreground hover:text-primary transition-colors font-medium w-full justify-start md:w-auto">
-            <SparklesIcon className="mr-2 h-5 w-5" /> Categories
+            {categoriesLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <SparklesIcon className="mr-2 h-5 w-5" />} Categories
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuLabel>Product Categories</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {categories.map((category) => (
-            <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
-                {category.icon && <category.icon className="mr-2 h-4 w-4" />}
-                {category.name}
-              </DropdownMenuItem>
-            </Link>
-          ))}
+          {categoriesLoading ? (
+            <DropdownMenuItem disabled>Loading categories...</DropdownMenuItem>
+          ) : categories.length > 0 ? (
+            categories.map((category) => {
+              const Icon = getIcon(category.iconName);
+              return (
+                <Link key={category.id} href={`/products?category=${category.slug}`} passHref>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setMobileMenuOpen(false)}>
+                    <Icon className="mr-2 h-4 w-4" />
+                    {category.name}
+                  </DropdownMenuItem>
+                </Link>
+              );
+            })
+          ) : (
+             <DropdownMenuItem disabled>No categories found</DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
        {user && (
@@ -105,7 +138,7 @@ const Header = () => {
             </Button>
           </Link>
 
-          {loading ? (
+          {authLoading ? (
              <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
           ) : user ? (
             <DropdownMenu>
@@ -154,7 +187,7 @@ const Header = () => {
                   {navItems}
                 </nav>
                 <div className="mt-auto pt-4 border-t border-border/40">
-                 {loading ? <p className="text-sm text-muted-foreground">Loading...</p> :
+                 {authLoading ? <p className="text-sm text-muted-foreground">Loading...</p> :
                   user ? (
                     <div className="space-y-2">
                        <div className="flex items-center gap-2">
@@ -189,4 +222,3 @@ const Header = () => {
 };
 
 export default Header;
-

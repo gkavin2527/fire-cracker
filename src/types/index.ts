@@ -14,12 +14,13 @@ export interface Product {
 }
 
 export interface Category {
-  id: string;
+  id: string; // Firestore document ID
   name: string;
-  icon?: LucideIcon; // Or string for path to custom SVG
   slug: string;
   imageUrl: string;
   imageHint: string;
+  iconName?: string; // e.g., "RocketIcon", "BombIcon" - to be mapped to Lucide components
+  displayOrder?: number; // For controlling display order
 }
 
 export interface CartItem {

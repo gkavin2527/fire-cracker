@@ -4,8 +4,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import ProductCard from '@/components/products/ProductCard';
-import { categories } from '@/lib/mockData'; // Categories still from mockData for now
-import type { Product } from '@/types';
+import type { Product, Category } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -20,9 +19,13 @@ const ProductsPage = () => {
 
   const [allFetchedProducts, setAllFetchedProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
+  const [productError, setProductError] = useState<string | null>(null);
   
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategorySlug || 'all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100]);
@@ -30,8 +33,8 @@ const ProductsPage = () => {
 
   useEffect(() => {
     const fetchProducts = async () => {
-      setIsLoading(true);
-      setError(null);
+      setIsLoadingProducts(true);
+      setProductError(null);
       try {
         const response = await fetch('/api/products');
         if (!response.ok) {
@@ -40,37 +43,59 @@ const ProductsPage = () => {
         }
         const data: Product[] = await response.json();
         setAllFetchedProducts(data);
-        setFilteredProducts(data); // Initialize filteredProducts with all data
+        setFilteredProducts(data); 
         if (data.length > 0) {
-          const newMaxPrice = Math.ceil(Math.max(...data.map(p => p.price), 100) / 10) * 10; // Round up to nearest 10
+          const newMaxPrice = Math.ceil(Math.max(...data.map(p => p.price), 100) / 10) * 10;
           setPriceRange([0, newMaxPrice]);
         } else {
           setPriceRange([0, 100]);
         }
       } catch (e: any) {
         console.error("Failed to fetch products:", e);
-        setError(e.message || "Failed to load products.");
+        setProductError(e.message || "Failed to load products.");
       } finally {
-        setIsLoading(false);
+        setIsLoadingProducts(false);
       }
     };
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true);
+      setCategoryError(null);
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data: Category[] = await response.json();
+        setCategories(data);
+      } catch (e: any) {
+        console.error("Failed to fetch categories:", e);
+        setCategoryError(e.message || "Failed to load categories.");
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const maxPrice = useMemo(() => {
-    if (allFetchedProducts.length === 0 && isLoading) return 100; // Default while loading
-    if (allFetchedProducts.length === 0 && !isLoading) return 100; // Default if no products
+    if (allFetchedProducts.length === 0 && isLoadingProducts) return 100;
+    if (allFetchedProducts.length === 0 && !isLoadingProducts) return 100;
     return Math.ceil(Math.max(...allFetchedProducts.map(p => p.price), 100) / 10) * 10;
-  }, [allFetchedProducts, isLoading]);
+  }, [allFetchedProducts, isLoadingProducts]);
 
 
   useEffect(() => {
     let tempProducts = [...allFetchedProducts];
 
     if (selectedCategory !== 'all') {
-      const category = categories.find(c => c.slug === selectedCategory);
-      if (category) {
-        tempProducts = tempProducts.filter(p => p.category === category.name);
+      const categoryDetails = categories.find(c => c.slug === selectedCategory);
+      if (categoryDetails) {
+        tempProducts = tempProducts.filter(p => p.category === categoryDetails.name);
       }
     }
 
@@ -96,7 +121,7 @@ const ProductsPage = () => {
     }
 
     setFilteredProducts(tempProducts);
-  }, [selectedCategory, searchTerm, priceRange, sortOrder, allFetchedProducts]);
+  }, [selectedCategory, searchTerm, priceRange, sortOrder, allFetchedProducts, categories]);
   
   useEffect(() => {
     if(initialCategorySlug) {
@@ -110,6 +135,13 @@ const ProductsPage = () => {
     setPriceRange([0, maxPrice]);
     setSortOrder('default');
   };
+  
+  const currentCategoryName = useMemo(() => {
+    if (selectedCategory === 'all') return 'All Products';
+    return categories.find(c => c.slug === selectedCategory)?.name || 'Products';
+  }, [selectedCategory, categories]);
+
+  const isLoading = isLoadingProducts || isLoadingCategories;
 
   return (
     <div className="flex flex-col md:flex-row gap-8">
@@ -137,19 +169,27 @@ const ProductsPage = () => {
 
             <div>
               <Label htmlFor="category-select" className="text-sm font-medium">Category</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger id="category-select" className="w-full mt-1">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.slug}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isLoadingCategories ? (
+                <div className="mt-1 h-10 flex items-center justify-center border rounded-md bg-muted/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : categoryError ? (
+                 <p className="text-xs text-destructive mt-1">Error loading categories.</p>
+              ) : (
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger id="category-select" className="w-full mt-1">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.slug}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div>
@@ -157,12 +197,12 @@ const ProductsPage = () => {
                 <div className="mt-2 p-1 border rounded-md">
                     <Slider
                     min={0}
-                    max={maxPrice} // Use dynamic maxPrice
+                    max={maxPrice}
                     step={1}
                     value={priceRange}
                     onValueChange={(value) => setPriceRange(value as [number, number])}
                     className="my-4"
-                    disabled={isLoading}
+                    disabled={isLoadingProducts}
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                     <span>${priceRange[0]}</span>
@@ -193,15 +233,15 @@ const ProductsPage = () => {
       {/* Product Grid */}
       <main className="w-full md:w-3/4 lg:w-4/5">
         <h1 className="text-3xl font-bold mb-8 font-headline">
-          {selectedCategory === 'all' ? 'All Products' : categories.find(c=>c.slug === selectedCategory)?.name || 'Products'}
+          {currentCategoryName}
         </h1>
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
-        ) : error ? (
+        ) : productError ? (
           <div className="text-center py-10 text-destructive">
-            <p className="text-xl">Error: {error}</p>
+            <p className="text-xl">Error: {productError}</p>
             <p>Could not load products. Please try again later.</p>
           </div>
         ) : filteredProducts.length > 0 ? (
