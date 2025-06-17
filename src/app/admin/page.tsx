@@ -13,13 +13,24 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid } from 'lucide-react'; // Added LayoutGrid for category icon
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2 } from 'lucide-react'; // Added LayoutGrid, Trash2
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm'; // Import AddCategoryForm
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore'; // Added getDocs, query, orderBy for categories
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore'; // Added getDocs, query, orderBy, doc, deleteDoc
 import * as z from "zod";
 
 const ProductFormSchema = z.object({
@@ -45,22 +56,22 @@ const CategoryFormSchema = z.object({
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]); // State for categories
+  const [categories, setCategories] = useState<Category[]>([]); 
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
-  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); // State for loading categories
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); 
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
-  const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); // State for submitting category
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
   const [productError, setProductError] = useState<string | null>(null);
-  const [categoryError, setCategoryError] = useState<string | null>(null); // State for category errors
+  const [categoryError, setCategoryError] = useState<string | null>(null); 
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
-  const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false); // State for category dialog
+  const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false); 
   const { toast } = useToast();
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const fetchAdminProducts = async () => {
     setIsLoadingProducts(true);
     setProductError(null);
     try {
-      // Fetch products directly from Firestore
       if (!db) throw new Error("Firestore database is not initialized.");
       const productsCollectionRef = collection(db, 'products');
       const q = query(productsCollectionRef, orderBy('name'));
@@ -143,14 +154,14 @@ export default function AdminPage() {
       }
       
       const productsCollectionRef = collection(db, 'products');
-      const docRef = await addDoc(productsCollectionRef, newProductData);
+      await addDoc(productsCollectionRef, newProductData);
       
       toast({
         title: "Product Added!",
         description: `${newProductData.name} has been successfully added.`,
       });
       setIsAddProductDialogOpen(false);
-      fetchAdminProducts(); // Refresh product list
+      fetchAdminProducts(); 
       return true;
 
     } catch (e: any) {
@@ -198,7 +209,7 @@ export default function AdminPage() {
         description: `${validatedData.name} has been successfully added.`,
       });
       setIsAddCategoryDialogOpen(false);
-      fetchAdminCategories(); // Refresh category list (and potentially product form dependencies)
+      fetchAdminCategories(); 
       return true;
 
     } catch (e: any)
@@ -222,9 +233,60 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    if (!productToDelete || !db) {
+      toast({
+        title: "Deletion Error",
+        description: "No product selected for deletion or database not initialized.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const productDocRef = doc(db, 'products', productToDelete.id);
+      await deleteDoc(productDocRef);
+      toast({
+        title: "Product Deleted",
+        description: `${productToDelete.name} has been successfully deleted.`,
+      });
+      setProductToDelete(null); // Close dialog
+      fetchAdminProducts(); // Refresh product list
+    } catch (e: any) {
+      console.error('Failed to delete product:', e);
+      let errorMessage = e.message || "Could not delete the product.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+      }
+      toast({
+        title: "Error Deleting Product",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setProductToDelete(null); // Close dialog even on error
+    }
+  };
 
   return (
     <div className="space-y-8">
+      <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product
+              "{productToDelete?.name}" from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete Product
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
         <div className="flex gap-2 flex-wrap">
@@ -289,6 +351,7 @@ export default function AdminPage() {
                       <TableHead>Category</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-right hidden sm:table-cell">Stock</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -299,6 +362,18 @@ export default function AdminPage() {
                         <TableCell>{product.category}</TableCell>
                         <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right hidden sm:table-cell">{product.stock ?? 'N/A'}</TableCell>
+                        <TableCell className="text-right">
+                           <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => setProductToDelete(product)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -384,3 +459,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
