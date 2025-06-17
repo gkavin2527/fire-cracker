@@ -24,176 +24,51 @@ const GKCrackersLogo = ({ className }: { className?: string }) => {
         fill="url(#logoGradient)"
         className="font-headline"
         textAnchor="middle"
+        transform-origin="center" 
       >
         GK Crackers
         <animateTransform
             attributeName="transform"
             type="scale"
-            values="1; 1.03; 1"
+            values="1; 1.05; 1" 
             begin="0s"
-            dur="1.5s"
+            dur="2s"
             repeatCount="indefinite"
-            additive="sum"
-            transform-origin="center"
         />
       </text>
 
-      {/* Spark 1 */}
-      <g>
-        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
-            <animate
-                attributeName="d"
-                values="M100 25 L100 25; M90 15 L110 35; M100 25 L100 25"
-                dur="1.2s"
-                begin="0s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0; -15 -10; -20 -15"
-                dur="1.2s"
-                begin="0s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="scale"
-                values="0; 1; 0.5; 0"
-                dur="1.2s"
-                begin="0s"
-                repeatCount="indefinite"
-                additive="sum" 
-                transform-origin="center"/>
-            <animate
-                attributeName="opacity"
-                values="0; 1; 0.5; 0"
-                dur="1.2s"
-                begin="0s"
-                repeatCount="indefinite" />
-        </path>
-      </g>
-      
-      {/* Spark 2 */}
-      <g>
-        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
-            <animate
-                attributeName="d"
-                values="M100 25 L100 25; M105 10 L95 40; M100 25 L100 25"
-                dur="1.2s"
-                begin="0.3s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0; 10 -12; 18 -18"
-                dur="1.2s"
-                begin="0.3s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="scale"
-                values="0; 1; 0.5; 0"
-                dur="1.2s"
-                begin="0.3s"
-                repeatCount="indefinite"
-                additive="sum"
-                transform-origin="center" />
-            <animate
-                attributeName="opacity"
-                values="0; 1; 0.5; 0"
-                dur="1.2s"
-                begin="0.3s"
-                repeatCount="indefinite" />
-        </path>
-      </g>
-
-       {/* Spark 3 - more horizontal */}
-      <g>
-        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
-            <animate
-                attributeName="d"
-                values="M100 25 L100 25; M80 25 L120 25; M100 25 L100 25" 
-                dur="1.2s"
-                begin="0.6s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="translate"
-                values="0 0; 0 5; 0 8" 
-                dur="1.2s"
-                begin="0.6s"
-                repeatCount="indefinite" />
-            <animateTransform
-                attributeName="transform"
-                type="scale"
-                values="0; 1; 0.3; 0"
-                dur="1.2s"
-                begin="0.6s"
-                repeatCount="indefinite"
-                additive="sum"
-                transform-origin="center" />
-            <animate
-                attributeName="opacity"
-                values="0; 1; 0.6; 0"
-                dur="1.2s"
-                begin="0.6s"
-                repeatCount="indefinite" />
-        </path>
-      </g>
-        {/* Spark 4 - small, quick pop */}
-      <g>
-        <circle r="1" fill="hsl(var(--accent))">
-            <animate
-                attributeName="cx"
-                values="100; 95; 100"
-                dur="0.8s"
-                begin="0.1s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="cy"
-                values="25; 20; 25"
-                dur="0.8s"
-                begin="0.1s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="r"
-                values="0; 2.5; 0"
-                dur="0.8s"
-                begin="0.1s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="opacity"
-                values="0; 1; 0"
-                dur="0.8s"
-                begin="0.1s"
-                repeatCount="indefinite" />
+      {/* Spark Group - Centralized for easier translation control if needed */}
+      <g transform="translate(100 25)"> {/* Centered around origin for spark calculations */}
+        {/* Spark 1 */}
+        <circle fill="hsl(var(--accent))">
+          <animate attributeName="cx" values="0; -20; -30" dur="1.2s" begin="0s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="0; -15; -20" dur="1.2s" begin="0s" repeatCount="indefinite" />
+          <animate attributeName="r" values="0; 3; 0" dur="1.2s" begin="0s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" begin="0s" repeatCount="indefinite" />
         </circle>
-      </g>
-       <g>
-        <circle r="1" fill="hsl(var(--accent))">
-            <animate
-                attributeName="cx"
-                values="100; 108; 100"
-                dur="0.8s"
-                begin="0.5s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="cy"
-                values="25; 30; 25"
-                dur="0.8s"
-                begin="0.5s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="r"
-                values="0; 2; 0"
-                dur="0.8s"
-                begin="0.5s"
-                repeatCount="indefinite" />
-            <animate
-                attributeName="opacity"
-                values="0; 1; 0"
-                dur="0.8s"
-                begin="0.5s"
-                repeatCount="indefinite" />
+
+        {/* Spark 2 */}
+        <circle fill="hsl(var(--accent))">
+          <animate attributeName="cx" values="0; 25; 35" dur="1.2s" begin="0.3s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="0; 0; 5" dur="1.2s" begin="0.3s" repeatCount="indefinite" />
+          <animate attributeName="r" values="0; 3.5; 0" dur="1.2s" begin="0.3s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" begin="0.3s" repeatCount="indefinite" />
+        </circle>
+
+        {/* Spark 3 */}
+        <circle fill="hsl(var(--accent))">
+          <animate attributeName="cx" values="0; 5; 10" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="0; 20; 28" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+          <animate attributeName="r" values="0; 2.5; 0" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0; 1; 0" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+        </circle>
+        
+        {/* Spark 4 - A smaller, quicker one */}
+        <circle fill="hsl(var(--accent))">
+          <animate attributeName="cx" values="0; -10; -15" dur="0.9s" begin="0.2s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="0; 10; 18" dur="0.9s" begin="0.2s" repeatCount="indefinite" />
+          <animate attributeName="r" values="0; 2; 0" dur="0.9s" begin="0.2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0; 1; 0" dur="0.9s" begin="0.2s" repeatCount="indefinite" />
         </circle>
       </g>
     </svg>
@@ -201,4 +76,3 @@ const GKCrackersLogo = ({ className }: { className?: string }) => {
 };
 
 export default GKCrackersLogo;
-
