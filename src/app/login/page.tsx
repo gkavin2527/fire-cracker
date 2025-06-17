@@ -14,7 +14,11 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      router.push('/admin'); // Redirect to admin or dashboard if already logged in
+      // If user is admin, redirect to /admin. Otherwise, redirect to homepage or a user dashboard.
+      // For now, all logged-in users are being pushed to /admin,
+      // and ProtectedPage will handle access denial for non-admins.
+      // This could be refined later if non-admins should go to a different default page.
+      router.push(user.email === "gkavin446@gmail.com" ? '/admin' : '/');
     }
   }, [user, loading, router]);
 
@@ -36,8 +40,8 @@ const LoginPage = () => {
     <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
       <Card className="w-full max-w-sm shadow-xl rounded-lg border-border/60">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold font-headline">Admin Login</CardTitle>
-          <CardDescription>Sign in to access the admin dashboard.</CardDescription>
+          <CardTitle className="text-2xl font-bold font-headline">Login</CardTitle>
+          <CardDescription>Sign in with your Google account.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button 
@@ -54,3 +58,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
