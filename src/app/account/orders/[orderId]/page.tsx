@@ -204,15 +204,15 @@ const UserOrderDetailsPage = () => {
                   <Receipt className="mr-3 h-5 w-5 text-primary/80" />
                   <div>
                     <p className="text-xs text-muted-foreground">Cost Breakdown</p>
-                    <p className="font-medium text-sm">Subtotal: ₹{order.subtotal.toFixed(2)}</p>
-                    <p className="font-medium text-sm">Shipping: ₹{order.shippingCost.toFixed(2)}</p>
+                    <p className="font-medium text-sm">Subtotal: ₹{(order.subtotal ?? 0).toFixed(2)}</p>
+                    <p className="font-medium text-sm">Shipping: ₹{(order.shippingCost ?? 0).toFixed(2)}</p>
                   </div>
               </div>
               <div className="flex items-center">
                 <DollarSign className="mr-3 h-5 w-5 text-primary/80" />
                 <div>
                   <p className="text-xs text-muted-foreground">Grand Total</p>
-                  <p className="font-medium text-lg text-primary">₹{order.grandTotal.toFixed(2)}</p>
+                  <p className="font-medium text-lg text-primary">₹{(order.grandTotal ?? 0).toFixed(2)}</p>
                 </div>
               </div>
             </div>

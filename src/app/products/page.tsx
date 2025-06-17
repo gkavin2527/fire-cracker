@@ -205,8 +205,8 @@ const ProductsPage = () => {
                     disabled={isLoadingProducts}
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>${priceRange[0]}</span>
-                    <span>${priceRange[1]}</span>
+                    <span>₹{priceRange[0]}</span>
+                    <span>₹{priceRange[1]}</span>
                     </div>
                 </div>
             </div>
@@ -264,3 +264,4 @@ const ProductsPage = () => {
 };
 
 export default ProductsPage;
+

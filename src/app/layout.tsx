@@ -10,12 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: 'GK Crackers - Your Premier Firework Destination',
   description: 'The best place to buy all your favorite fireworks and crackers online!',
-  icons: { // Explicitly define icon types as empty to override default behaviors
-    icon: [],
-    shortcut: [],
-    apple: [],
-    other: [],
-  },
+  icons: null, // Explicitly prevent Next.js from processing icons via metadata from src/app
 };
 
 export default function RootLayout({
@@ -46,4 +41,3 @@ export default function RootLayout({
     </html>
   );
 }
-
