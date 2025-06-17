@@ -58,7 +58,7 @@ const prompt = ai.definePrompt({
     - Order ID: {{orderId}}
     - Customer Name: {{customerName}}
     - Customer Email: {{customerEmail}}
-    - Total Amount: ${{totalAmount}}
+    - Total Amount: \${{totalAmount}}
 
     Shipping Address:
     - Name: {{shippingAddress.fullName}}
@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
 
     Items Ordered:
     {{#each items}}
-    - {{quantity}} x {{name}} @ ${{price}} each
+    - {{quantity}} x {{name}} @ \${{price}} each
     {{/each}}
 
     Instructions for the Email Content:
@@ -132,3 +132,4 @@ const orderConfirmationEmailFlow = ai.defineFlow(
 );
 
 export type { FlowInput as OrderConfirmationEmailInput, FlowOutput as OrderConfirmationEmailOutput };
+

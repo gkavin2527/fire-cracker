@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: 'CrackleMart - Your One Stop Cracker Shop',
   description: 'The best place to buy all your favorite crackers online!',
+  icons: {}, // Explicitly provide an empty icons configuration
 };
 
 export default function RootLayout({
