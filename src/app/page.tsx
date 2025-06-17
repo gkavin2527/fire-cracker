@@ -16,16 +16,13 @@ async function getProducts(): Promise<Product[]> {
     if (!res.ok) {
       let errorBody = "No additional error body from API or failed to parse error body.";
       try {
-        // Attempt to parse as JSON, which our API routes should return on error
         const errorJson = await res.json();
         errorBody = JSON.stringify(errorJson);
       } catch (e) {
-        // If not JSON, try to parse as text (fallback)
         try {
           errorBody = await res.text();
           if (!errorBody.trim()) errorBody = "Empty error body from API."
         } catch (textError) {
-          // If text parsing also fails
            errorBody = "Could not parse error body as JSON or text."
         }
       }
@@ -34,7 +31,7 @@ async function getProducts(): Promise<Product[]> {
     }
     const products: Product[] = await res.json();
     return products;
-  } catch (error) { // This catches network errors or issues with fetch itself
+  } catch (error) { 
     console.error("Network or other error fetching products for homepage:", error);
     return [];
   }
