@@ -24,7 +24,7 @@ import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confir
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from '@/lib/firebase';
-import { doc, setDoc, Timestamp, collection } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, collection, addDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -46,7 +46,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
   const { getCartTotal, cartItems, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); // Get the authenticated user
+  const { user } = useAuth(); 
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const form = useForm<CheckoutFormValues>({
@@ -85,7 +85,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
     setIsProcessingOrder(true);
 
-    const orderId = `GKC-${Date.now()}`; // Updated Order ID prefix
+    const orderId = `GKC-${Date.now()}`; 
     const shippingDetails: ShippingAddress = { ...values };
     
     const orderData: Order = {
@@ -94,7 +94,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       items: cartItems,
       shippingAddress: shippingDetails,
       totalAmount: getCartTotal(),
-      orderDate: Timestamp.now(), // Use Firestore Timestamp for server-side consistency
+      orderDate: Timestamp.now(), 
       status: 'Pending',
     };
 
@@ -102,13 +102,12 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       if (!db) {
         throw new Error("Firestore database is not initialized. Check Firebase configuration.");
       }
-      // Save order to Firestore
       const ordersCollectionRef = collection(db, 'orders');
       await setDoc(doc(ordersCollectionRef, orderId), orderData);
       
       toast({
         title: "Order Saved!",
-        description: `Your order ${orderId} has been saved to the database.`,
+        description: `Your order ${orderId} has been successfully saved.`,
       });
 
     } catch (dbError: any) {
@@ -119,7 +118,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         variant: "destructive",
       });
       setIsProcessingOrder(false);
-      return; // Stop processing if database save fails
+      return; 
     }
     
     try {
@@ -143,24 +142,44 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           postalCode: shippingDetails.postalCode,
           country: shippingDetails.country,
         },
-        shopName: "GK Crackers", // Updated shop name
+        shopName: "GK Crackers",
         shopUrl: typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'),
       };
 
       const emailContent = await generateOrderConfirmationEmail(emailInput);
-      console.log("Generated Order Confirmation Email Content:");
-      console.log("Subject:", emailContent.subject);
-      console.log("HTML Body:", emailContent.htmlBody);
-      toast({
-        title: "Email Generated (Logged)",
-        description: "Order confirmation email content generated and logged to console.",
-      });
+      
+      // Write to 'mail' collection for Trigger Email extension
+      if (db) {
+        const mailCollectionRef = collection(db, 'mail');
+        await addDoc(mailCollectionRef, {
+          to: [shippingDetails.email], // Must be an array
+          message: {
+            subject: emailContent.subject,
+            html: emailContent.htmlBody,
+          },
+        });
+        toast({
+          title: "Order Confirmation Queued",
+          description: "Your order confirmation email is being prepared and will be sent shortly.",
+        });
+      } else {
+         console.warn("Firestore 'db' instance not available. Could not queue email.");
+         toast({
+            title: "Email Queueing Skipped",
+            description: "Order confirmation email was generated but not queued for sending (DB issue). Content logged to console.",
+            variant: "destructive"
+         });
+         console.log("Generated Order Confirmation Email Content (DB not available for queuing):");
+         console.log("To:", shippingDetails.email);
+         console.log("Subject:", emailContent.subject);
+         console.log("HTML Body:", emailContent.htmlBody);
+      }
 
     } catch (emailError) {
-      console.error("Failed to generate order confirmation email:", emailError);
+      console.error("Failed to generate or queue order confirmation email:", emailError);
       toast({
-        title: "Email Generation Failed",
-        description: "Could not generate the order confirmation email. Order was still placed and saved.",
+        title: "Email Processing Failed",
+        description: "Could not prepare the order confirmation email. Your order was still placed and saved.",
         variant: "destructive",
       });
     }
@@ -287,7 +306,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         </Form>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground text-center">
-        <p>This is a demo checkout. No real payment will be processed. Email content will be logged to the console. Orders will be saved to Firestore.</p>
+        <p>This is a demo checkout. No real payment will be processed. Order confirmation email will be queued for sending via Firebase 'Trigger Email' extension (requires setup). Orders will be saved to Firestore.</p>
       </CardFooter>
     </Card>
   );

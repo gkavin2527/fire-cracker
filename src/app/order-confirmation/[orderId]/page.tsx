@@ -12,7 +12,7 @@ import Image from 'next/image';
 
 interface OrderDetails {
   orderId: string;
-  shippingDetails: ShippingAddress; // This now includes email
+  shippingDetails: ShippingAddress; 
   items: CartItem[];
   total: number;
 }
@@ -96,7 +96,7 @@ const OrderConfirmationPage = () => {
           </div>
           
           <p className="text-sm text-muted-foreground text-center">
-            You will receive an email confirmation shortly (content logged to console for this demo) with your order details.
+            You will receive an email confirmation shortly from our system.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
