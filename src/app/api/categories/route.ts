@@ -29,7 +29,7 @@ export async function GET() {
     if (error.code === 'failed-precondition' && error.message && error.message.toLowerCase().includes('index')) {
         return NextResponse.json({
             error: 'Firestore query for categories requires a composite index. Please create it in the Firebase console.',
-            details: error.message,
+            details: error.message, // This message often includes the link to create the index
             firestoreErrorCode: error.code
         }, { status: 500 });
     }

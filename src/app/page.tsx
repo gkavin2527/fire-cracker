@@ -12,16 +12,30 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 async function getProducts(): Promise<Product[]> {
   try {
-    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' }); 
-    
+    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
     if (!res.ok) {
-      console.error("Failed to fetch products for homepage:", res.status, await res.text());
+      let errorBody = "No additional error body from API or failed to parse error body.";
+      try {
+        // Attempt to parse as JSON, which our API routes should return on error
+        const errorJson = await res.json();
+        errorBody = JSON.stringify(errorJson);
+      } catch (e) {
+        // If not JSON, try to parse as text (fallback)
+        try {
+          errorBody = await res.text();
+          if (!errorBody.trim()) errorBody = "Empty error body from API."
+        } catch (textError) {
+          // If text parsing also fails
+           errorBody = "Could not parse error body as JSON or text."
+        }
+      }
+      console.error(`Failed to fetch products for homepage. Status: ${res.status}. API Response: ${errorBody}`);
       return [];
     }
     const products: Product[] = await res.json();
     return products;
-  } catch (error) {
-    console.error("Error fetching products for homepage:", error);
+  } catch (error) { // This catches network errors or issues with fetch itself
+    console.error("Network or other error fetching products for homepage:", error);
     return [];
   }
 }
@@ -30,13 +44,25 @@ async function getCategories(): Promise<Category[]> {
   try {
     const res = await fetch(`${APP_URL}/api/categories`, { cache: 'no-store' });
     if (!res.ok) {
-      console.error("Failed to fetch categories for homepage:", res.status, await res.text());
+      let errorBody = "No additional error body from API or failed to parse error body.";
+       try {
+        const errorJson = await res.json();
+        errorBody = JSON.stringify(errorJson);
+      } catch (e) {
+        try {
+          errorBody = await res.text();
+          if (!errorBody.trim()) errorBody = "Empty error body from API."
+        } catch (textError) {
+           errorBody = "Could not parse error body as JSON or text."
+        }
+      }
+      console.error(`Failed to fetch categories for homepage. Status: ${res.status}. API Response: ${errorBody}`);
       return [];
     }
     const categories: Category[] = await res.json();
     return categories;
   } catch (error) {
-    console.error("Error fetching categories for homepage:", error);
+    console.error("Network or other error fetching categories for homepage:", error);
     return [];
   }
 }
