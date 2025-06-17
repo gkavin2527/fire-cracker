@@ -10,7 +10,8 @@ import { ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+// Using relative URLs for API calls is more robust for client-side fetching within the same app.
+// const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,7 +33,7 @@ export default function HomePage() {
     setIsLoadingProducts(true);
     setProductsError(null);
     try {
-      const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
+      const res = await fetch(`/api/products`, { cache: 'no-store' }); // Use relative URL
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Failed to parse error from products API" }));
         throw new Error(errorData.error || `Failed to fetch products. Status: ${res.status}`);
@@ -52,7 +53,7 @@ export default function HomePage() {
     setIsLoadingCategories(true);
     setCategoriesError(null);
     try {
-      const res = await fetch(`${APP_URL}/api/categories`, { cache: 'no-store' });
+      const res = await fetch(`/api/categories`, { cache: 'no-store' }); // Use relative URL
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Failed to parse error from categories API" }));
         throw new Error(errorData.error || `Failed to fetch categories. Status: ${res.status}`);
@@ -71,7 +72,7 @@ export default function HomePage() {
     setIsLoadingHeroImages(true);
     setHeroImagesError(null);
     try {
-      const res = await fetch(`${APP_URL}/api/hero-images`, { cache: 'no-store' });
+      const res = await fetch(`/api/hero-images`, { cache: 'no-store' }); // Use relative URL
        if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Failed to parse error from hero images API" }));
         throw new Error(errorData.error || `Failed to fetch hero images. Status: ${res.status}`);
@@ -229,3 +230,4 @@ export default function HomePage() {
     </div>
   );
 }
+
