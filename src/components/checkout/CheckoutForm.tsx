@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,11 +18,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { ShippingAddress } from "@/types";
-import { Send } from "lucide-react";
+import type { ShippingAddress, OrderConfirmationEmailInput } from "@/types";
+import { Send, Loader2 } from "lucide-react";
+import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confirmation-email-flow";
+import { useState } from "react";
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
   addressLine1: z.string().min(5, { message: "Address must be at least 5 characters." }),
   addressLine2: z.string().optional(),
   city: z.string().min(2, { message: "City must be at least 2 characters." }),
@@ -39,11 +43,13 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
   const { getCartTotal, cartItems, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
+      email: "",
       addressLine1: "",
       addressLine2: "",
       city: "",
@@ -52,7 +58,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
     },
   });
 
-  function onSubmit(values: CheckoutFormValues) {
+  async function onSubmit(values: CheckoutFormValues) {
     if (cartItems.length === 0) {
         toast({
             title: "Empty Cart",
@@ -62,6 +68,8 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         router.push('/products');
         return;
     }
+
+    setIsProcessingOrder(true);
 
     // Mock order creation
     const orderId = `CM-${Date.now()}`;
@@ -74,13 +82,62 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       total: getCartTotal(),
     });
     
-    onOrderPlaced(orderId, shippingDetails);
-    clearCart();
+    try {
+      // Prepare data for email generation
+      const emailInput: OrderConfirmationEmailInput = {
+        customerName: shippingDetails.fullName,
+        customerEmail: shippingDetails.email,
+        orderId: orderId,
+        items: cartItems.map(item => ({ 
+          name: item.product.name, 
+          quantity: item.quantity, 
+          price: item.product.price,
+          imageUrl: item.product.imageUrl, // Pass for potential email display
+          imageHint: item.product.imageHint,
+        })),
+        totalAmount: getCartTotal(),
+        shippingAddress: { // Pass only relevant parts of shipping address for email
+          fullName: shippingDetails.fullName,
+          addressLine1: shippingDetails.addressLine1,
+          addressLine2: shippingDetails.addressLine2,
+          city: shippingDetails.city,
+          postalCode: shippingDetails.postalCode,
+          country: shippingDetails.country,
+        },
+        shopName: "CrackleMart",
+        shopUrl: typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'),
+      };
+
+      // Generate email content
+      const emailContent = await generateOrderConfirmationEmail(emailInput);
+      console.log("Generated Order Confirmation Email Content:");
+      console.log("Subject:", emailContent.subject);
+      console.log("HTML Body:", emailContent.htmlBody);
+      // In a real app, you would send this email using an email service.
+       toast({
+        title: "Email Generated (Logged)",
+        description: "Order confirmation email content generated and logged to console.",
+      });
+
+
+    } catch (emailError) {
+      console.error("Failed to generate order confirmation email:", emailError);
+      toast({
+        title: "Email Generation Failed",
+        description: "Could not generate the order confirmation email. Order still placed.",
+        variant: "destructive",
+      });
+    }
+
+    onOrderPlaced(orderId, shippingDetails); // This will navigate to confirmation page
+    clearCart(); // Clear cart after successful order steps
     
     toast({
       title: "Order Placed!",
       description: `Your order ${orderId} has been successfully placed.`,
     });
+
+    setIsProcessingOrder(false);
   }
 
   return (
@@ -98,7 +155,20 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} />
+                    <Input placeholder="John Doe" {...field} disabled={isProcessingOrder} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Address</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="you@example.com" {...field} disabled={isProcessingOrder} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -111,7 +181,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Address Line 1</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St" {...field} />
+                    <Input placeholder="123 Main St" {...field} disabled={isProcessingOrder} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,7 +194,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Address Line 2 (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Apartment, studio, or floor" {...field} />
+                    <Input placeholder="Apartment, studio, or floor" {...field} disabled={isProcessingOrder} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,7 +208,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                   <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input placeholder="New York" {...field} />
+                      <Input placeholder="New York" {...field} disabled={isProcessingOrder} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -151,7 +221,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                   <FormItem>
                     <FormLabel>Postal Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="10001" {...field} />
+                      <Input placeholder="10001" {...field} disabled={isProcessingOrder} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,20 +235,28 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Country</FormLabel>
                   <FormControl>
-                    <Input placeholder="United States" {...field} />
+                    <Input placeholder="United States" {...field} disabled={isProcessingOrder} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              <Send className="mr-2 h-5 w-5" /> Place Order
+            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isProcessingOrder}>
+              {isProcessingOrder ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-5 w-5" /> Place Order
+                </>
+              )}
             </Button>
           </form>
         </Form>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground text-center">
-        <p>This is a demo checkout. No real payment will be processed.</p>
+        <p>This is a demo checkout. No real payment will be processed. Email content will be logged to the console.</p>
       </CardFooter>
     </Card>
   );

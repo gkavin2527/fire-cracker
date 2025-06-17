@@ -30,6 +30,7 @@ export interface CartItem {
 
 export interface ShippingAddress {
   fullName: string;
+  email: string; // Added email field
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -48,3 +49,27 @@ export interface Order {
 
 // Type for the product form, excluding fields that are auto-generated or not part of creation
 export type ProductFormData = Omit<Product, 'id' | 'rating'>;
+
+// Type for the order confirmation email generation
+export interface OrderConfirmationEmailInput {
+  customerName: string;
+  customerEmail: string;
+  orderId: string;
+  items: Array<{ name: string; quantity: number; price: number; imageUrl: string; imageHint: string }>;
+  totalAmount: number;
+  shippingAddress: {
+    fullName: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  shopName: string;
+  shopUrl: string;
+}
+
+export interface OrderConfirmationEmailOutput {
+  subject: string;
+  htmlBody: string;
+}

@@ -1,17 +1,18 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } Afrom 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { CheckCircle, Package, HomeIcon } from 'lucide-react';
+import { CheckCircle, Package, HomeIcon, MailIcon } from 'lucide-react';
 import type { CartItem, ShippingAddress } from '@/types';
 import Image from 'next/image';
 
 interface OrderDetails {
   orderId: string;
-  shippingDetails: ShippingAddress;
+  shippingDetails: ShippingAddress; // This now includes email
   items: CartItem[];
   total: number;
 }
@@ -27,12 +28,9 @@ const OrderConfirmationPage = () => {
       const storedOrder = sessionStorage.getItem('lastOrder');
       if (storedOrder) {
         const parsedOrder: OrderDetails = JSON.parse(storedOrder);
-        // Ensure the orderId from URL matches the one in sessionStorage for security/consistency
         if (parsedOrder.orderId === orderId) {
           setOrderDetails(parsedOrder);
         } else {
-          // Mismatch or no order found for this ID, redirect.
-          // This is a simple check; real apps would fetch from a backend.
           router.replace('/'); 
         }
       } else {
@@ -63,12 +61,16 @@ const OrderConfirmationPage = () => {
         <CardContent className="p-6 sm:p-8 space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-2 font-headline">Shipping To:</h3>
-            <div className="text-muted-foreground text-sm p-4 bg-muted/50 rounded-md">
+            <div className="text-muted-foreground text-sm p-4 bg-muted/50 rounded-md space-y-1">
               <p className="font-medium">{orderDetails.shippingDetails.fullName}</p>
               <p>{orderDetails.shippingDetails.addressLine1}</p>
               {orderDetails.shippingDetails.addressLine2 && <p>{orderDetails.shippingDetails.addressLine2}</p>}
               <p>{orderDetails.shippingDetails.city}, {orderDetails.shippingDetails.postalCode}</p>
               <p>{orderDetails.shippingDetails.country}</p>
+              <div className="flex items-center pt-1">
+                <MailIcon className="w-4 h-4 mr-2 text-primary/80" />
+                <p>{orderDetails.shippingDetails.email}</p>
+              </div>
             </div>
           </div>
 
@@ -94,7 +96,7 @@ const OrderConfirmationPage = () => {
           </div>
           
           <p className="text-sm text-muted-foreground text-center">
-            You will receive an email confirmation shortly with your order details and tracking information (once available).
+            You will receive an email confirmation shortly (content logged to console for this demo) with your order details.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
