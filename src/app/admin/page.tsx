@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData, ProductFormData } from '@/types';
+import type { Product, Category, CategoryFormData, ProductFormData, Order } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -13,7 +13,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3 } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -29,8 +29,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore'; 
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore'; 
 import * as z from "zod";
+import { format } from 'date-fns';
 
 const ProductFormSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -55,12 +56,18 @@ const CategoryFormSchema = z.object({
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); 
+  const [orders, setOrders] = useState<Order[]>([]);
+  
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); 
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
+
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
+  
   const [productError, setProductError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null); 
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -125,10 +132,39 @@ export default function AdminPage() {
     }
   };
 
+  const fetchAdminOrders = async () => {
+    setIsLoadingOrders(true);
+    setOrdersError(null);
+    try {
+      if (!db) throw new Error("Firestore database is not initialized.");
+      const ordersCollectionRef = collection(db, 'orders');
+      const q = query(ordersCollectionRef, orderBy('orderDate', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const fetchedOrders: Order[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Convert Firestore Timestamp to JS Date for easier handling, or keep as Timestamp if preferred
+        const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date(data.orderDate);
+        fetchedOrders.push({ id: doc.id, ...data, orderDate } as Order);
+      });
+      setOrders(fetchedOrders);
+    } catch (e: any) {
+      console.error("Failed to fetch orders for admin page:", e);
+      setOrdersError(e.message || "Failed to load orders.");
+      toast({
+        title: "Error Loading Orders",
+        description: e.message || "Could not fetch orders from Firestore. Check Firestore rules for 'orders' collection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
 
   useEffect(() => {
     fetchAdminProducts();
     fetchAdminCategories();
+    fetchAdminOrders();
   }, []);
 
   const handleAddProduct = async (productDataFromForm: ProductFormData) => {
@@ -173,7 +209,7 @@ export default function AdminPage() {
       console.error('Failed to add product directly to Firestore:', e);
       let errorMessage = e.message || "Could not save the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
       } else if (e.message && e.message.includes('Invalid product data')) {
           errorMessage = e.message; 
       }
@@ -222,7 +258,7 @@ export default function AdminPage() {
       console.error('Failed to update product in Firestore:', e);
       let errorMessage = e.message || "Could not update the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
       } else if (e.message && e.message.includes('Invalid product data')) {
           errorMessage = e.message;
       }
@@ -283,7 +319,7 @@ export default function AdminPage() {
       console.error('Failed to add category directly to Firestore:', e);
       let errorMessage = e.message || "Could not save the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
       } else if (e.message && e.message.includes('Invalid category data')) {
           errorMessage = e.message;
       }
@@ -332,7 +368,7 @@ export default function AdminPage() {
       console.error('Failed to update category in Firestore:', e);
       let errorMessage = e.message || "Could not update the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
       } else if (e.message && e.message.includes('Invalid category data')) {
           errorMessage = e.message;
       }
@@ -385,7 +421,7 @@ export default function AdminPage() {
       console.error('Failed to delete product:', e);
       let errorMessage = e.message || "Could not delete the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
       }
       toast({
         title: "Error Deleting Product",
@@ -419,7 +455,7 @@ export default function AdminPage() {
       console.error('Failed to delete category:', e);
       let errorMessage = e.message || "Could not delete the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
       }
       toast({
         title: "Error Deleting Category",
@@ -658,6 +694,56 @@ export default function AdminPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
+         <Card className="shadow-md rounded-lg border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl font-headline">
+              <ShoppingBag className="mr-3 h-6 w-6 text-primary" /> Order Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingOrders ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Loading orders...</p>
+              </div>
+            ) : ordersError ? (
+              <p className="text-destructive text-center py-10">Error loading orders: {ordersError}</p>
+            ) : orders.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[150px]">Order ID</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      {/* <TableHead className="text-right">Actions</TableHead> */}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-xs">{order.id}</TableCell>
+                        <TableCell className="font-medium">{order.shippingAddress.fullName}</TableCell>
+                        <TableCell>{format(new Date(order.orderDate), 'MMM dd, yyyy HH:mm')}</TableCell>
+                        <TableCell className="text-right">${order.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell>{order.status}</TableCell>
+                        {/* <TableCell className="text-right space-x-1">
+                           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10" aria-label={`View order ${order.id}`}>
+                              <ListOrdered className="h-4 w-4" />
+                            </Button>
+                        </TableCell> */}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-10">No orders found.</p>
+            )}
+          </CardContent>
+        </Card>
         <Card className="shadow-md rounded-lg border-border/60">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-headline">
@@ -670,22 +756,10 @@ export default function AdminPage() {
             </p>
           </CardContent>
         </Card>
-
-        <Card className="shadow-md rounded-lg border-border/60">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl font-headline">
-              <ShoppingBag className="mr-3 h-6 w-6 text-primary" /> Order Management (Placeholder)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              This section will display order information once a backend order processing system is integrated.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
 
+    
     
