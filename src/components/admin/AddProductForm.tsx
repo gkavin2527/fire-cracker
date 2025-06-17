@@ -16,9 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Product } from '@/types';
-import { categories } from '@/lib/mockData';
+import type { Product, Category } from '@/types';
+// import { categories } from '@/lib/mockData'; // Removed mock data import
 import { Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -26,18 +28,23 @@ const formSchema = z.object({
   price: z.coerce.number().positive({ message: "Price must be a positive number." }),
   category: z.string().min(1, { message: "Please select a category." }),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
-  imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(), // Adjusted max length for hint
+  imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(),
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
 type ProductFormValues = Omit<Product, 'id' | 'rating'>;
 
 interface AddProductFormProps {
-  onSubmitProduct: (product: ProductFormValues) => Promise<boolean>; // Returns promise indicating success
+  onSubmitProduct: (product: ProductFormValues) => Promise<boolean>;
   isSubmitting: boolean;
 }
 
 const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) => {
+  const [formCategories, setFormCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const { toast } = useToast();
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,10 +58,37 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
     },
   });
 
+  useEffect(() => {
+    const fetchCategoriesForForm = async () => {
+      setIsLoadingCategories(true);
+      setCategoryError(null);
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data: Category[] = await response.json();
+        setFormCategories(data);
+      } catch (e: any) {
+        console.error("Failed to fetch categories for AddProductForm:", e);
+        setCategoryError(e.message || "Failed to load categories.");
+        toast({
+          title: "Error Loading Categories",
+          description: e.message || "Could not fetch categories for the form.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    fetchCategoriesForForm();
+  }, [toast]);
+
   async function onSubmit(values: ProductFormValues) {
     const success = await onSubmitProduct(values);
     if (success) {
-      form.reset(); 
+      form.reset();
     }
   }
 
@@ -121,18 +155,33 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories || !!categoryError || formCategories.length === 0}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={
+                      isLoadingCategories ? "Loading categories..." :
+                      categoryError ? "Error loading categories" :
+                      formCategories.length === 0 ? "No categories found" :
+                      "Select a category"
+                    } />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
+                  {isLoadingCategories ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </div>
+                  ) : categoryError ? (
+                     <SelectItem value="error" disabled>Error: {categoryError.substring(0,50)}...</SelectItem>
+                  ) : formCategories.length === 0 ? (
+                     <SelectItem value="no-cat" disabled>No categories available</SelectItem>
+                  ) : (
+                    formCategories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.name}> {/* Assuming API returns 'name' field to match product.category schema */}
+                        {cat.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -165,7 +214,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting}>
+        <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSubmitting || isLoadingCategories}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
