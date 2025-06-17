@@ -34,6 +34,7 @@ const AccountPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -44,6 +45,7 @@ const AccountPage = () => {
 
       setIsLoadingOrders(true);
       setError(null);
+      setErrorDetails(null);
       try {
         if (!db) throw new Error("Firestore database is not initialized.");
         const ordersCollectionRef = collection(db, 'orders');
@@ -62,7 +64,16 @@ const AccountPage = () => {
         setOrders(fetchedOrders);
       } catch (e: any) {
         console.error("Failed to fetch user orders:", e);
-        setError(e.message || "Failed to load your orders. Please ensure you have permissions to view them or try again later.");
+        if (e.code === 'failed-precondition' && e.message && e.message.toLowerCase().includes('index')) {
+            setError("A database index is required to display your orders.");
+            setErrorDetails("Please create the required Firestore index. The Firebase console typically provides a link to create this index in its error messages. The query involves filtering by 'userId' and ordering by 'orderDate' (descending) on the 'orders' collection.");
+        } else if (e.code === 'permission-denied') {
+            setError("Permission Denied.");
+            setErrorDetails("You do not have permission to view these orders. Please check Firestore security rules for the 'orders' collection to ensure authenticated users can read their own orders.");
+        } else {
+            setError(e.message || "Failed to load your orders.");
+            setErrorDetails("An unexpected error occurred. Please try again later.");
+        }
       } finally {
         setIsLoadingOrders(false);
       }
@@ -133,9 +144,9 @@ const AccountPage = () => {
           ) : error ? (
             <div className="text-destructive text-center py-10 space-y-2">
                 <AlertCircle className="mx-auto h-10 w-10" />
-                <p className="font-semibold">Error Loading Orders</p>
-                <p className="text-sm">{error}</p>
-                <p className="text-xs text-muted-foreground">Please check your internet connection or Firestore permissions for the 'orders' collection.</p>
+                <p className="font-semibold">{error}</p>
+                {errorDetails && <p className="text-sm text-muted-foreground">{errorDetails}</p>}
+                <p className="text-xs text-muted-foreground mt-2">If this issue persists and involves an index, ensure the composite index for (userId ASC, orderDate DESC) on the 'orders' collection exists in Firestore.</p>
             </div>
           ) : orders.length > 0 ? (
             <div className="overflow-x-auto">
