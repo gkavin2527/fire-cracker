@@ -58,7 +58,7 @@ const prompt = ai.definePrompt({
     - Order ID: {{orderId}}
     - Customer Name: {{customerName}}
     - Customer Email: {{customerEmail}}
-    - Total Amount: $\{{totalAmount}}
+    - Total Amount: ${{totalAmount}}
 
     Shipping Address:
     - Name: {{shippingAddress.fullName}}
@@ -68,7 +68,7 @@ const prompt = ai.definePrompt({
 
     Items Ordered:
     {{#each items}}
-    - {{quantity}} x {{name}} @ $\{{price}} each
+    - {{quantity}} x {{name}} @ ${{price}} each
     {{/each}}
 
     Instructions for the Email Content:
@@ -88,7 +88,7 @@ const prompt = ai.definePrompt({
         *   Include the shop name ({{shopName}}) and a link to the shop ({{shopUrl}}).
     3.  **Styling**:
         *   The HTML body should be well-formatted and suitable for email clients.
-        *   Use inline CSS or a `<style>` block within the HTML body for styling. Avoid external stylesheets.
+        *   Use inline CSS or "style" HTML tags within the HTML body for styling. Avoid external stylesheets.
         *   Make it visually appealing. Consider using a simple table structure for order items if it helps with layout in emails.
         *   Ensure good contrast and readability. Primary color for the shop could be #E63946 if you need a brand color.
     4.  **Do not include any placeholder images like 'placehold.co' in the final email.** If an item's imageUrl points to a placeholder, describe the item without an image or use a generic product icon if you can generate/find a suitable one (but prefer no image over a bad placeholder in an email). For this task, if an item has an image, try to include it.
@@ -97,7 +97,7 @@ const prompt = ai.definePrompt({
     Generate the subject and htmlBody fields according to the OrderConfirmationEmailOutputSchema.
   `,
   config: {
-    safetySettings: [ // Example safety settings - adjust as needed
+    safetySettings: [ 
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -113,7 +113,7 @@ const orderConfirmationEmailFlow = ai.defineFlow(
     outputSchema: OrderConfirmationEmailOutputSchema,
   },
   async (input) => {
-    // Minor data transformation: ensure prices are formatted if needed by prompt (though prompt handles it with $ prefix)
+    // Minor data transformation: ensure prices are formatted if needed by prompt
     const processedInput = {
         ...input,
         items: input.items.map(item => ({
@@ -131,6 +131,4 @@ const orderConfirmationEmailFlow = ai.defineFlow(
   }
 );
 
-// Exporting types for use in other parts of the application if needed,
-// though they are already defined in src/types/index.ts
 export type { FlowInput as OrderConfirmationEmailInput, FlowOutput as OrderConfirmationEmailOutput };
