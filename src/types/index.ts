@@ -19,7 +19,6 @@ export interface Category {
   slug: string;
   imageUrl: string;
   imageHint: string;
-  // iconName?: string; // Removed
   displayOrder?: number; // For controlling display order
 }
 
@@ -39,11 +38,12 @@ export interface ShippingAddress {
 }
 
 export interface Order {
-  id: string;
+  id: string; // Firestore document ID, same as the one generated client-side
+  userId: string; // ID of the user who placed the order
   items: CartItem[];
   shippingAddress: ShippingAddress;
   totalAmount: number;
-  orderDate: Date;
+  orderDate: any; // Will be Firestore Timestamp, 'any' for now to avoid build issues before Firestore import
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 }
 

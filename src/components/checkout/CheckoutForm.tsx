@@ -18,10 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { ShippingAddress, OrderConfirmationEmailInput } from "@/types";
+import type { ShippingAddress, OrderConfirmationEmailInput, Order } from "@/types";
 import { Send, Loader2 } from "lucide-react";
 import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confirmation-email-flow";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from '@/lib/firebase';
+import { doc, setDoc, Timestamp, collection } from 'firebase/firestore';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -43,6 +46,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
   const { getCartTotal, cartItems, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get the authenticated user
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const form = useForm<CheckoutFormValues>({
@@ -59,6 +63,16 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
   });
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to place an order. Redirecting to login...",
+        variant: "destructive",
+      });
+      router.push('/login');
+      return;
+    }
+
     if (cartItems.length === 0) {
         toast({
             title: "Empty Cart",
@@ -71,19 +85,44 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
     setIsProcessingOrder(true);
 
-    // Mock order creation
     const orderId = `CM-${Date.now()}`;
     const shippingDetails: ShippingAddress = { ...values };
     
-    console.log("Order Placed:", {
-      orderId,
-      shippingDetails,
+    const orderData: Order = {
+      id: orderId,
+      userId: user.uid,
       items: cartItems,
-      total: getCartTotal(),
-    });
+      shippingAddress: shippingDetails,
+      totalAmount: getCartTotal(),
+      orderDate: Timestamp.now(), // Use Firestore Timestamp for server-side consistency
+      status: 'Pending',
+    };
+
+    try {
+      if (!db) {
+        throw new Error("Firestore database is not initialized. Check Firebase configuration.");
+      }
+      // Save order to Firestore
+      const ordersCollectionRef = collection(db, 'orders');
+      await setDoc(doc(ordersCollectionRef, orderId), orderData);
+      
+      toast({
+        title: "Order Saved!",
+        description: `Your order ${orderId} has been saved to the database.`,
+      });
+
+    } catch (dbError: any) {
+      console.error("Failed to save order to Firestore:", dbError);
+      toast({
+        title: "Database Error",
+        description: `Could not save your order: ${dbError.message || 'Unknown error'}. Please try again.`,
+        variant: "destructive",
+      });
+      setIsProcessingOrder(false);
+      return; // Stop processing if database save fails
+    }
     
     try {
-      // Prepare data for email generation
       const emailInput: OrderConfirmationEmailInput = {
         customerName: shippingDetails.fullName,
         customerEmail: shippingDetails.email,
@@ -92,11 +131,11 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           name: item.product.name, 
           quantity: item.quantity, 
           price: item.product.price,
-          imageUrl: item.product.imageUrl, // Pass for potential email display
+          imageUrl: item.product.imageUrl,
           imageHint: item.product.imageHint,
         })),
         totalAmount: getCartTotal(),
-        shippingAddress: { // Pass only relevant parts of shipping address for email
+        shippingAddress: {
           fullName: shippingDetails.fullName,
           addressLine1: shippingDetails.addressLine1,
           addressLine2: shippingDetails.addressLine2,
@@ -108,34 +147,32 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         shopUrl: typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'),
       };
 
-      // Generate email content
       const emailContent = await generateOrderConfirmationEmail(emailInput);
       console.log("Generated Order Confirmation Email Content:");
       console.log("Subject:", emailContent.subject);
       console.log("HTML Body:", emailContent.htmlBody);
-      // In a real app, you would send this email using an email service.
-       toast({
+      toast({
         title: "Email Generated (Logged)",
         description: "Order confirmation email content generated and logged to console.",
       });
-
 
     } catch (emailError) {
       console.error("Failed to generate order confirmation email:", emailError);
       toast({
         title: "Email Generation Failed",
-        description: "Could not generate the order confirmation email. Order still placed.",
+        description: "Could not generate the order confirmation email. Order was still placed and saved.",
         variant: "destructive",
       });
     }
 
-    onOrderPlaced(orderId, shippingDetails); // This will navigate to confirmation page
-    clearCart(); // Clear cart after successful order steps
+    onOrderPlaced(orderId, shippingDetails); 
+    clearCart(); 
     
-    toast({
-      title: "Order Placed!",
-      description: `Your order ${orderId} has been successfully placed.`,
-    });
+    // This toast might be redundant if the "Order Saved!" toast is sufficient
+    // toast({
+    //   title: "Order Placed!",
+    //   description: `Your order ${orderId} has been successfully processed.`,
+    // });
 
     setIsProcessingOrder(false);
   }
@@ -241,7 +278,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 </FormItem>
               )}
             />
-            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isProcessingOrder}>
+            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isProcessingOrder || !cartItems.length || !user}>
               {isProcessingOrder ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...
@@ -256,7 +293,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         </Form>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground text-center">
-        <p>This is a demo checkout. No real payment will be processed. Email content will be logged to the console.</p>
+        <p>This is a demo checkout. No real payment will be processed. Email content will be logged to the console. Orders will be saved to Firestore.</p>
       </CardFooter>
     </Card>
   );
