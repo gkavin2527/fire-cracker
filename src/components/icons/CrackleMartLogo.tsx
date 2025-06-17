@@ -24,7 +24,7 @@ const GKCrackersLogo = ({ className }: { className?: string }) => {
         fill="url(#logoGradient)"
         className="font-headline"
         textAnchor="middle"
-        transform-origin="center"
+        transformOrigin="center"
       >
         GK Crackers
         <animateTransform
