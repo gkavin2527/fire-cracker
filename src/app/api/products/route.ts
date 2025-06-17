@@ -24,8 +24,15 @@ export async function GET() {
   } catch (error: any) {
     console.error("Error fetching products from Firestore API:", error);
 
+    if (error.code === 'permission-denied') {
+        return NextResponse.json({
+            error: 'Firestore permission denied. Please check your Firestore security rules.',
+            details: error.message,
+            firestoreErrorCode: error.code
+        }, { status: 403 }); // 403 Forbidden for permission issues
+    }
+    
     // Check for Firestore specific error codes for missing index
-    // Firestore error code for missing index is typically 'failed-precondition'
     if (error.code === 'failed-precondition' && error.message && error.message.toLowerCase().includes('index')) {
         return NextResponse.json({
             error: 'Firestore query for products requires a composite index. Please create it in the Firebase console.',
@@ -37,8 +44,8 @@ export async function GET() {
     // Fallback for other errors
     return NextResponse.json({
         error: 'Failed to fetch products from Firestore.',
-        details: error.message || String(error), // Provide more details from the error object
-        firestoreErrorCode: error.code || 'N/A' // Include Firestore error code if available
+        details: error.message || String(error),
+        firestoreErrorCode: error.code || 'N/A'
     }, { status: 500 });
   }
 }
