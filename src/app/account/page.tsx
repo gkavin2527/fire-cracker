@@ -38,6 +38,7 @@ const AccountPage = () => {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
@@ -54,6 +55,7 @@ const AccountPage = () => {
         return;
       }
       setIsLoadingProfile(true);
+      setProfileError(null);
       try {
         if (!db) throw new Error("Firestore database is not initialized.");
         const userDocRef = doc(db, 'users', user.uid);
@@ -72,8 +74,15 @@ const AccountPage = () => {
           setUserProfile(newUserProfile);
         }
       } catch (e: any) {
-        console.error("Failed to fetch user profile:", e);
-        toast({ title: "Error", description: "Could not load profile information.", variant: "destructive" });
+        console.error("Failed to fetch/create user profile:", e);
+        let description = "Could not load or initialize profile information.";
+        if (e.code === 'permission-denied') {
+          description = "Permission denied when trying to access your profile. Please check Firestore security rules for the 'users' collection.";
+        } else if (e.message) {
+          description = e.message;
+        }
+        setProfileError(description);
+        toast({ title: "Profile Error", description, variant: "destructive" });
       } finally {
         setIsLoadingProfile(false);
       }
@@ -153,7 +162,11 @@ const AccountPage = () => {
       return true;
     } catch (e: any) {
       console.error("Failed to save address:", e);
-      toast({ title: "Error", description: e.message || "Could not save address.", variant: "destructive" });
+      let description = e.message || "Could not save address.";
+      if (e.code === 'permission-denied') {
+        description = "Permission denied when trying to save your address. Please check Firestore security rules for the 'users' collection.";
+      }
+      toast({ title: "Error", description, variant: "destructive" });
       return false;
     } finally {
       setIsSavingAddress(false);
@@ -215,8 +228,14 @@ const AccountPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><strong className="font-medium">Name:</strong> {userProfile?.displayName || user.displayName || 'N/A'}</p>
-            <p><strong className="font-medium">Email:</strong> {userProfile?.email || user.email}</p>
+            {profileError ? (
+                 <p className="text-destructive">Error: {profileError}</p>
+            ) : (
+            <>
+                <p><strong className="font-medium">Name:</strong> {userProfile?.displayName || user.displayName || 'N/A'}</p>
+                <p><strong className="font-medium">Email:</strong> {userProfile?.email || user.email}</p>
+            </>
+            )}
           </CardContent>
         </Card>
 
@@ -225,13 +244,15 @@ const AccountPage = () => {
             <CardTitle className="flex items-center text-xl font-headline">
               <Home className="mr-3 h-6 w-6 text-primary" /> Default Shipping Address
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setIsAddressDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setIsAddressDialogOpen(true)} disabled={isLoadingProfile || !!profileError}>
               <Edit className="mr-2 h-4 w-4" /> {userProfile?.defaultShippingAddress ? 'Edit' : 'Add'}
             </Button>
           </CardHeader>
           <CardContent className="text-sm">
             {isLoadingProfile ? (
               <p className="text-muted-foreground">Loading address...</p>
+            ) : profileError ? (
+                <p className="text-destructive">Could not load address. See profile error.</p>
             ) : userProfile?.defaultShippingAddress ? (
               <div className="space-y-1">
                 <p><strong>{userProfile.defaultShippingAddress.fullName}</strong></p>
@@ -268,7 +289,7 @@ const AccountPage = () => {
                 <AlertCircle className="mx-auto h-10 w-10" />
                 <p className="font-semibold">{orderError}</p>
                 {orderErrorDetails && <p className="text-sm text-muted-foreground">{orderErrorDetails}</p>}
-                <p className="text-xs text-muted-foreground mt-2">If this issue persists and involves an index, ensure the composite index for (userId ASC, orderDate DESC) on the 'orders' collection exists in Firestore.</p>
+                <p className="text-xs text-muted-foreground mt-2">If this issue persists and involves an index, ensure the composite index for (userId ASC, orderDate DESC) on the 'orders' collection exists in Firestore. If it relates to permissions, check Firestore security rules.</p>
             </div>
           ) : orders.length > 0 ? (
             <div className="overflow-x-auto">

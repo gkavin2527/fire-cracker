@@ -100,10 +100,14 @@ export default function AdminPage() {
       setProducts(fetchedProducts);
     } catch (e: any) {
       console.error("Failed to fetch products for admin page:", e);
-      setProductError(e.message || "Failed to load products.");
+      let errorMessage = e.message || "Failed to load products.";
+      if (e.code === 'permission-denied') {
+        errorMessage = "Permission denied. Check Firestore security rules for 'products' collection (admin read access).";
+      }
+      setProductError(errorMessage);
       toast({
         title: "Error Loading Products",
-        description: e.message || "Could not fetch products from Firestore.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -126,10 +130,14 @@ export default function AdminPage() {
       setCategories(fetchedCategories);
     } catch (e: any) {
       console.error("Failed to fetch categories for admin page:", e);
-      setCategoryError(e.message || "Failed to load categories.");
+      let errorMessage = e.message || "Failed to load categories.";
+       if (e.code === 'permission-denied') {
+        errorMessage = "Permission denied. Check Firestore security rules for 'categories' collection (admin read access).";
+      }
+      setCategoryError(errorMessage);
       toast({
         title: "Error Loading Categories",
-        description: e.message || "Could not fetch categories from Firestore.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -154,10 +162,14 @@ export default function AdminPage() {
       setOrders(fetchedOrders);
     } catch (e: any) {
       console.error("Failed to fetch orders for admin page:", e);
-      setOrdersError(e.message || "Failed to load orders.");
+      let errorMessage = e.message || "Failed to load orders.";
+       if (e.code === 'permission-denied') {
+        errorMessage = "Permission denied. Check Firestore security rules for 'orders' collection (admin read access).";
+      }
+      setOrdersError(errorMessage);
       toast({
         title: "Error Loading Orders",
-        description: e.message || "Could not fetch orders from Firestore. Check Firestore rules for 'orders' collection.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -213,7 +225,7 @@ export default function AdminPage() {
       console.error('Failed to add product directly to Firestore:', e);
       let errorMessage = e.message || "Could not save the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection (admin write access).";
       } else if (e.message && e.message.includes('Invalid product data')) {
           errorMessage = e.message; 
       }
@@ -247,7 +259,7 @@ export default function AdminPage() {
       }
 
       const productDocRef = doc(db, 'products', productId);
-      await updateDoc(productDocRef, { ...validatedData }); // Ensure all validated fields are passed
+      await updateDoc(productDocRef, { ...validatedData }); 
 
       toast({
         title: "Product Updated!",
@@ -262,7 +274,7 @@ export default function AdminPage() {
       console.error('Failed to update product in Firestore:', e);
       let errorMessage = e.message || "Could not update the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection (admin write access).";
       } else if (e.message && e.message.includes('Invalid product data')) {
           errorMessage = e.message;
       }
@@ -323,7 +335,7 @@ export default function AdminPage() {
       console.error('Failed to add category directly to Firestore:', e);
       let errorMessage = e.message || "Could not save the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection (admin write access).";
       } else if (e.message && e.message.includes('Invalid category data')) {
           errorMessage = e.message;
       }
@@ -372,7 +384,7 @@ export default function AdminPage() {
       console.error('Failed to update category in Firestore:', e);
       let errorMessage = e.message || "Could not update the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection (admin write access).";
       } else if (e.message && e.message.includes('Invalid category data')) {
           errorMessage = e.message;
       }
@@ -425,7 +437,7 @@ export default function AdminPage() {
       console.error('Failed to delete product:', e);
       let errorMessage = e.message || "Could not delete the product.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'products' collection (admin delete access).";
       }
       toast({
         title: "Error Deleting Product",
@@ -459,7 +471,7 @@ export default function AdminPage() {
       console.error('Failed to delete category:', e);
       let errorMessage = e.message || "Could not delete the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'categories' collection (admin delete access).";
       }
       toast({
         title: "Error Deleting Category",
@@ -490,17 +502,15 @@ export default function AdminPage() {
       const orderDocRef = doc(db, 'orders', orderId);
       await updateDoc(orderDocRef, { status: newStatus });
       toast({ title: "Order Status Updated", description: `Order ${orderId} status changed to ${newStatus}.` });
-      fetchAdminOrders(); // Refresh orders list
-      // Update selectedOrder in state to reflect change immediately in dialog if still open
+      fetchAdminOrders(); 
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
-      // closeOrderDetails(); // Optionally close dialog after update
     } catch (e: any) {
       console.error('Failed to update order status:', e);
       let errorMessage = e.message || "Could not update order status.";
       if (e.code && e.code.startsWith('permission-denied')) {
-          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'orders' collection.";
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'orders' collection (admin update access).";
       }
       toast({ title: "Error Updating Status", description: errorMessage, variant: "destructive" });
     } finally {
@@ -629,7 +639,7 @@ export default function AdminPage() {
                 <p className="ml-3 text-muted-foreground">Loading products...</p>
               </div>
             ) : productError ? (
-              <p className="text-destructive text-center py-10">Error loading products: {productError}</p>
+              <p className="text-destructive text-center py-10">Error: {productError}</p>
             ) : products.length > 0 ? (
               <div className="overflow-x-auto max-h-96">
                 <Table>
@@ -695,7 +705,7 @@ export default function AdminPage() {
                 <p className="ml-3 text-muted-foreground">Loading categories...</p>
               </div>
             ) : categoryError ? (
-              <p className="text-destructive text-center py-10">Error loading categories: {categoryError}</p>
+              <p className="text-destructive text-center py-10">Error: {categoryError}</p>
             ) : categories.length > 0 ? (
               <div className="overflow-x-auto max-h-96">
                 <Table>
@@ -759,7 +769,7 @@ export default function AdminPage() {
                 <p className="ml-3 text-muted-foreground">Loading orders...</p>
               </div>
             ) : ordersError ? (
-              <p className="text-destructive text-center py-10">Error loading orders: {ordersError}</p>
+              <p className="text-destructive text-center py-10">Error: {ordersError}</p>
             ) : orders.length > 0 ? (
               <div className="overflow-x-auto max-h-96">
                 <Table>

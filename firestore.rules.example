@@ -1,0 +1,56 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is an admin
+    // IMPORTANT: Replace 'YOUR_ADMIN_USER_UID_HERE' with the actual Firebase Auth UID of your admin user.
+    // You can find a user's UID in the Firebase Console > Authentication > Users tab.
+    // Alternatively, if you use email for admin check, you could use request.auth.token.email == "your-admin-email@example.com"
+    // but UID is generally more secure if an email can change.
+    // For this app, the frontend uses email "gkavin446@gmail.com". Find this user's UID.
+    function isAdmin() {
+      // Example: return request.auth.uid == 'YOUR_ADMIN_USER_UID_HERE';
+      // Or, if checking by email claim (ensure email_verified is also true for security):
+      return request.auth.token.email == "gkavin446@gmail.com" && request.auth.token.email_verified;
+    }
+
+    // Users collection:
+    // - Authenticated users can read and write their own profile.
+    // - Admins can read any user profile (optional, for admin panel user management if built).
+    match /users/{userId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null; // Allow user to create their profile on first sign-in.
+      // allow read: if isAdmin(); // Uncomment if admins need to read all user profiles
+    }
+
+    // Products collection:
+    // - Anyone can read products (for display on public pages).
+    // - Only admins can create, update, or delete products.
+    // - Authenticated users can read products (needed for stock check during checkout transaction).
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Categories collection:
+    // - Anyone can read categories.
+    // - Only admins can create, update, or delete categories.
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Orders collection:
+    // - Authenticated users can create their own orders.
+    // - Authenticated users can read and update (e.g., cancel) their own orders.
+    // - Admins can read and update any order.
+    match /orders/{orderId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      // No delete for orders by users, perhaps only by admins if needed and with caution.
+      // allow delete: if isAdmin();
+    }
+  }
+}

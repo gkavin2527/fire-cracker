@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'; // Ensure fresh data on every request
 export async function GET() {
   if (!db) {
     console.error("Firestore database is not initialized in /api/products GET.");
-    return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
+    return NextResponse.json({ error: 'Firestore not initialized. Check Firebase config and .env.local variables.' }, { status: 500 });
   }
   try {
     const productsCollection = collection(db, 'products');
@@ -26,13 +26,12 @@ export async function GET() {
 
     if (error.code === 'permission-denied') {
         return NextResponse.json({
-            error: 'Firestore permission denied. Please check your Firestore security rules.',
+            error: 'Firestore permission denied when fetching products. Please check your Firestore security rules to allow public read access to the "products" collection.',
             details: error.message,
             firestoreErrorCode: error.code
         }, { status: 403 }); // 403 Forbidden for permission issues
     }
     
-    // Check for Firestore specific error codes for missing index
     if (error.code === 'failed-precondition' && error.message && error.message.toLowerCase().includes('index')) {
         return NextResponse.json({
             error: 'Firestore query for products requires a composite index. Please create it in the Firebase console.',
@@ -41,7 +40,6 @@ export async function GET() {
         }, { status: 500 });
     }
     
-    // Fallback for other errors
     return NextResponse.json({
         error: 'Failed to fetch products from Firestore.',
         details: error.message || String(error),
@@ -50,27 +48,20 @@ export async function GET() {
   }
 }
 
-// ProductFormSchema is no longer used here for POST as client handles validation for direct DB write
-// Keeping the schema definition here if this API route is ever used for POST from other sources,
-// or for reference.
 const ProductFormSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   price: z.coerce.number().positive({ message: "Price must be a positive number." }),
   category: z.string().min(1, { message: "Please select a category." }),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
-  imageHint: z.string().max(20, "Image hint too long").optional(), // Max 2 words generally
+  imageHint: z.string().max(20, "Image hint too long").optional(),
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
-// The POST handler is now NOT USED by the admin page's "Add Product" form.
-// It's kept here in case other parts of the system might use it, or for future use.
-// If it were to be used, it would need a mechanism to authenticate requests
-// if Firestore rules require authentication for writes via this server-side route.
 export async function POST(request: Request) {
   if (!db) {
     console.error("Firestore database is not initialized in /api/products POST.");
-    return NextResponse.json({ error: 'Firestore not initialized' }, { status: 500 });
+    return NextResponse.json({ error: 'Firestore not initialized. Check Firebase config.' }, { status: 500 });
   }
   console.warn("/api/products POST endpoint was called. Note: Admin page now writes products directly to Firestore.");
   try {
@@ -101,7 +92,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Error adding product to Firestore API:", error);
     if (error.code === 'permission-denied') {
-        return NextResponse.json({ error: 'Firestore permission denied. Check your Firestore security rules.', details: error.message, firestoreErrorCode: error.code}, { status: 403});
+        return NextResponse.json({ error: 'Firestore permission denied. Check your Firestore security rules for write access to "products" (likely admin only).', details: error.message, firestoreErrorCode: error.code}, { status: 403});
     }
     return NextResponse.json({ error: 'Failed to add product to Firestore.', details: error.message || String(error), firestoreErrorCode: error.code || 'N/A' }, { status: 500 });
   }

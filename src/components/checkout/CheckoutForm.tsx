@@ -78,8 +78,16 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           } else if (user.email) { // Pre-fill email if no profile exists yet
             form.setValue('email', user.email);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to fetch default shipping address:", error);
+          if (error.code === 'permission-denied') {
+            toast({
+              title: "Address Loading Issue",
+              description: "Could not load your default address due to permissions. Your Firestore rules might need adjustment for reading user profiles.",
+              variant: "destructive",
+              duration: 7000,
+            });
+          }
         }
       }
     };
@@ -87,7 +95,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
     if (!authLoading && user) {
       fetchDefaultAddress();
     }
-  }, [user, authLoading, form]);
+  }, [user, authLoading, form, toast]);
 
 
   async function onSubmit(values: CheckoutFormValues) {
@@ -126,7 +134,6 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
     const grandTotal = getGrandTotal();
     
     try {
-      // Firestore transaction to check stock and update
       await runTransaction(db, async (transaction) => {
         const productUpdates = [];
 
@@ -149,13 +156,11 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           });
         }
 
-        // If all stock checks passed, apply updates
         for (const update of productUpdates) {
           transaction.update(update.ref, { stock: update.newStock });
         }
       });
 
-      // If transaction is successful, stock has been updated. Now save the order.
       const orderData: Order = {
         id: orderId,
         userId: user.uid,
@@ -178,17 +183,20 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
     } catch (error: any) {
       console.error("Failed to process order (stock check or Firestore save):", error);
+      let description = error.message || "Could not process your order. Please review your cart or try again.";
+      if (error.code === 'permission-denied') {
+        description = "Permission denied while trying to place your order. This could be related to reading product stock, updating stock, or saving the order. Please check your Firestore security rules.";
+      }
       toast({
         title: "Order Processing Failed",
-        description: error.message || "Could not process your order. Please review your cart or try again.",
+        description,
         variant: "destructive",
-        duration: 7000,
+        duration: 9000,
       });
       setIsProcessingOrder(false);
       return; 
     }
     
-    // Proceed with email sending only if order was successfully saved
     try {
       const emailInput: OrderConfirmationEmailInput = {
         customerName: shippingDetails.fullName,
@@ -233,7 +241,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         const errorData = await emailApiResponse.json();
         const apiError = new Error(errorData.error || `Failed to send email via API (status: ${emailApiResponse.status})`);
         (apiError as any).details = errorData.details;
-        (apiError as any).code = errorData.code; // Store Nodemailer specific code if available
+        (apiError as any).code = errorData.code; 
         throw apiError;
       }
         

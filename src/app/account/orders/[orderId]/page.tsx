@@ -66,7 +66,7 @@ const UserOrderDetailsPage = () => {
         if (orderDocSnap.exists()) {
           const orderData = orderDocSnap.data() as Omit<Order, 'id' | 'orderDate'> & { orderDate: Timestamp };
           if (orderData.userId !== user.uid) {
-            setError("Access denied. You do not have permission to view this order.");
+            setError("Access denied. You do not have permission to view this order. This might be a Firestore security rule issue or you are trying to access an order that isn't yours.");
             setOrder(null);
           } else {
             setOrder({ 
@@ -81,7 +81,11 @@ const UserOrderDetailsPage = () => {
         }
       } catch (e: any) {
         console.error("Failed to fetch order details:", e);
-        setError(e.message || "Failed to load order details. Please try again later.");
+        if (e.code === 'permission-denied') {
+          setError("Permission denied when fetching order details. Please check Firestore security rules for the 'orders' collection.");
+        } else {
+          setError(e.message || "Failed to load order details. Please try again later.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -105,7 +109,11 @@ const UserOrderDetailsPage = () => {
       toast({ title: "Order Cancelled", description: "Your order has been successfully cancelled." });
     } catch (e: any) {
       console.error("Failed to cancel order:", e);
-      toast({ title: "Cancellation Failed", description: e.message || "Could not cancel the order.", variant: "destructive" });
+      let description = e.message || "Could not cancel the order.";
+      if (e.code === 'permission-denied') {
+        description = "Permission denied to cancel this order. Please check Firestore security rules for updating 'orders'.";
+      }
+      toast({ title: "Cancellation Failed", description, variant: "destructive" });
     } finally {
       setIsCancelling(false);
       setShowCancelConfirm(false);
@@ -127,7 +135,7 @@ const UserOrderDetailsPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-bold text-destructive mb-2">Error</h1>
+        <h1 className="text-2xl font-bold text-destructive mb-2">Error Loading Order</h1>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button onClick={() => router.push('/account')} variant="outline">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to My Account
