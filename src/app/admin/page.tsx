@@ -26,7 +26,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger, // No longer needed for this specific button
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase'; 
@@ -363,16 +363,15 @@ export default function AdminPage() {
                         <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right hidden sm:table-cell">{product.stock ?? 'N/A'}</TableCell>
                         <TableCell className="text-right">
-                           <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="text-destructive hover:bg-destructive/10"
                               onClick={() => setProductToDelete(product)}
+                              aria-label={`Delete product ${product.name}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          </AlertDialogTrigger>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -459,5 +458,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
