@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
+import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -78,6 +79,10 @@ export default function AdminPage() {
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isOrderDetailsDialogOpen, setIsOrderDetailsDialogOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
 
   const fetchAdminProducts = async () => {
@@ -143,7 +148,6 @@ export default function AdminPage() {
       const fetchedOrders: Order[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Convert Firestore Timestamp to JS Date for easier handling, or keep as Timestamp if preferred
         const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date(data.orderDate);
         fetchedOrders.push({ id: doc.id, ...data, orderDate } as Order);
       });
@@ -243,7 +247,7 @@ export default function AdminPage() {
       }
 
       const productDocRef = doc(db, 'products', productId);
-      await updateDoc(productDocRef, validatedData);
+      await updateDoc(productDocRef, { ...validatedData }); // Ensure all validated fields are passed
 
       toast({
         title: "Product Updated!",
@@ -353,7 +357,7 @@ export default function AdminPage() {
       }
 
       const categoryDocRef = doc(db, 'categories', categoryId);
-      await updateDoc(categoryDocRef, validatedData);
+      await updateDoc(categoryDocRef, { ...validatedData });
 
       toast({
         title: "Category Updated!",
@@ -466,6 +470,44 @@ export default function AdminPage() {
     }
   };
 
+  const openOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsOrderDetailsDialogOpen(true);
+  };
+
+  const closeOrderDetails = () => {
+    setSelectedOrder(null);
+    setIsOrderDetailsDialogOpen(false);
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    if (!db) {
+      toast({ title: "Database Error", description: "Firestore not initialized.", variant: "destructive" });
+      return;
+    }
+    setIsUpdatingStatus(true);
+    try {
+      const orderDocRef = doc(db, 'orders', orderId);
+      await updateDoc(orderDocRef, { status: newStatus });
+      toast({ title: "Order Status Updated", description: `Order ${orderId} status changed to ${newStatus}.` });
+      fetchAdminOrders(); // Refresh orders list
+      // Update selectedOrder in state to reflect change immediately in dialog if still open
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      }
+      // closeOrderDetails(); // Optionally close dialog after update
+    } catch (e: any) {
+      console.error('Failed to update order status:', e);
+      let errorMessage = e.message || "Could not update order status.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules for 'orders' collection.";
+      }
+      toast({ title: "Error Updating Status", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -504,6 +546,16 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedOrder && (
+        <OrderDetailsDialog
+          order={selectedOrder}
+          isOpen={isOrderDetailsDialogOpen}
+          onClose={closeOrderDetails}
+          onUpdateStatus={handleUpdateOrderStatus}
+          isUpdatingStatus={isUpdatingStatus}
+        />
+      )}
 
 
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -718,7 +770,7 @@ export default function AdminPage() {
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Status</TableHead>
-                      {/* <TableHead className="text-right">Actions</TableHead> */}
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -729,11 +781,17 @@ export default function AdminPage() {
                         <TableCell>{format(new Date(order.orderDate), 'MMM dd, yyyy HH:mm')}</TableCell>
                         <TableCell className="text-right">${order.totalAmount.toFixed(2)}</TableCell>
                         <TableCell>{order.status}</TableCell>
-                        {/* <TableCell className="text-right space-x-1">
-                           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10" aria-label={`View order ${order.id}`}>
+                        <TableCell className="text-right space-x-1">
+                           <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10" 
+                              aria-label={`View order ${order.id}`}
+                              onClick={() => openOrderDetails(order)}
+                            >
                               <ListOrdered className="h-4 w-4" />
                             </Button>
-                        </TableCell> */}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -760,6 +818,5 @@ export default function AdminPage() {
     </div>
   );
 }
-
     
     
