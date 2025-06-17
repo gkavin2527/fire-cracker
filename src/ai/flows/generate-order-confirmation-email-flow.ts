@@ -132,4 +132,3 @@ const orderConfirmationEmailFlow = ai.defineFlow(
 );
 
 export type { FlowInput as OrderConfirmationEmailInput, FlowOutput as OrderConfirmationEmailOutput };
-

@@ -6,7 +6,7 @@ import { ShoppingCart, Home, Package, Menu, SparklesIcon, UserCircle, LogIn, Log
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import CrackleMartLogo from '@/components/icons/CrackleMartLogo';
+import GKCrackersLogo from '@/components/icons/CrackleMartLogo'; // Corrected import path
 import type { Category } from '@/types';
 // import { getIcon } from '@/lib/iconMap'; // getIcon no longer needed for categories
 import {
@@ -146,7 +146,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" passHref className="flex items-center gap-2">
-          <CrackleMartLogo className="h-10 w-auto" />
+          <GKCrackersLogo className="h-10 w-auto" />
         </Link>
 
         <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">

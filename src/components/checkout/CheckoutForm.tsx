@@ -85,7 +85,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
     setIsProcessingOrder(true);
 
-    const orderId = `CM-${Date.now()}`;
+    const orderId = `GKC-${Date.now()}`; // Updated Order ID prefix
     const shippingDetails: ShippingAddress = { ...values };
     
     const orderData: Order = {
@@ -143,7 +143,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           postalCode: shippingDetails.postalCode,
           country: shippingDetails.country,
         },
-        shopName: "CrackleMart",
+        shopName: "GK Crackers", // Updated shop name
         shopUrl: typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'),
       };
 
@@ -168,12 +168,6 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
     onOrderPlaced(orderId, shippingDetails); 
     clearCart(); 
     
-    // This toast might be redundant if the "Order Saved!" toast is sufficient
-    // toast({
-    //   title: "Order Placed!",
-    //   description: `Your order ${orderId} has been successfully processed.`,
-    // });
-
     setIsProcessingOrder(false);
   }
 
