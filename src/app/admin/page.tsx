@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData, ProductFormData, Order } from '@/types';
+import type { Product, Category, CategoryFormData, ProductFormData, Order, HeroImage, HeroImageFormData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -13,9 +13,10 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
+import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
 import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -33,6 +34,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore'; 
 import * as z from "zod";
 import { format } from 'date-fns';
+import Image from 'next/image'; // For displaying hero image previews
 
 const ProductFormSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -53,32 +55,49 @@ const CategoryFormSchema = z.object({
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
 
+const HeroImageFormSchema = z.object({
+  imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
+  altText: z.string().min(3, { message: "Alt text must be at least 3 characters." }),
+  dataAiHint: z.string().min(1, "AI hint is required.").max(50, "AI hint should be brief, max 50 chars."),
+  displayOrder: z.coerce.number().int().min(0, { message: "Display order must be a non-negative integer." }),
+  isActive: z.boolean().default(true),
+  linkUrl: z.string().url({ message: "Please enter a valid URL or leave empty." }).optional().or(z.literal('')),
+});
+
 
 export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [heroImages, setHeroImages] = useState<HeroImage[]>([]);
   
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); 
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
+  const [isLoadingHeroImages, setIsLoadingHeroImages] = useState<boolean>(true);
 
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
+  const [isSubmittingHeroImage, setIsSubmittingHeroImage] = useState<boolean>(false);
   
   const [productError, setProductError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null); 
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [heroImageError, setHeroImageError] = useState<string | null>(null);
   
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [heroImageToDelete, setHeroImageToDelete] = useState<HeroImage | null>(null);
   
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+
+  const [editingHeroImage, setEditingHeroImage] = useState<HeroImage | null>(null);
+  const [isHeroImageFormOpen, setIsHeroImageFormOpen] = useState(false);
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailsDialogOpen, setIsOrderDetailsDialogOpen] = useState(false);
@@ -177,10 +196,44 @@ export default function AdminPage() {
     }
   };
 
+  const fetchHeroImages = async () => {
+    setIsLoadingHeroImages(true);
+    setHeroImageError(null);
+    try {
+      if (!db) throw new Error("Firestore database is not initialized.");
+      const heroImagesCollectionRef = collection(db, 'heroImages');
+      const q = query(heroImagesCollectionRef, orderBy('displayOrder', 'asc'));
+      const querySnapshot = await getDocs(q);
+      const fetchedHeroImages: HeroImage[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedHeroImages.push({ id: doc.id, ...doc.data() } as HeroImage);
+      });
+      setHeroImages(fetchedHeroImages);
+    } catch (e: any) {
+      console.error("Failed to fetch hero images for admin page:", e);
+      let errorMessage = e.message || "Failed to load hero images.";
+       if (e.code === 'permission-denied') {
+        errorMessage = "Permission denied. Check Firestore security rules for 'heroImages' collection (admin read access).";
+      } else if (e.code === 'failed-precondition' && e.message.toLowerCase().includes('index')) {
+        errorMessage = "Database index missing for hero images. Please create an index on 'displayOrder' (ASC) in the 'heroImages' collection."
+      }
+      setHeroImageError(errorMessage);
+      toast({
+        title: "Error Loading Hero Images",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingHeroImages(false);
+    }
+  };
+
+
   useEffect(() => {
     fetchAdminProducts();
     fetchAdminCategories();
     fetchAdminOrders();
+    fetchHeroImages();
   }, []);
 
   const handleAddProduct = async (productDataFromForm: ProductFormData) => {
@@ -518,6 +571,107 @@ export default function AdminPage() {
     }
   };
 
+  // Hero Image Handlers
+  const handleAddHeroImage = async (heroImageData: HeroImageFormData) => {
+    setIsSubmittingHeroImage(true);
+    try {
+      const validation = HeroImageFormSchema.safeParse(heroImageData);
+      if (!validation.success) {
+        const errorMessages = Object.values(validation.error.flatten().fieldErrors)
+                                  .map(errArray => errArray?.join(', '))
+                                  .filter(Boolean)
+                                  .join('; ');
+        throw new Error(`Invalid hero image data: ${errorMessages}`);
+      }
+      const validatedData = validation.data;
+      if (!db) throw new Error("Firestore database not initialized.");
+      const heroImagesCollectionRef = collection(db, 'heroImages');
+      await addDoc(heroImagesCollectionRef, validatedData);
+      toast({ title: "Hero Image Added!", description: `${validatedData.altText} has been added.` });
+      setIsHeroImageFormOpen(false);
+      fetchHeroImages();
+      return true;
+    } catch (e: any) {
+      console.error("Failed to add hero image:", e);
+      let errorMessage = e.message || "Could not save hero image.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Permission denied. Check Firestore rules for 'heroImages' (admin write).";
+      }
+      toast({ title: "Error Adding Hero Image", description: errorMessage, variant: "destructive" });
+      return false;
+    } finally {
+      setIsSubmittingHeroImage(false);
+    }
+  };
+
+  const handleUpdateHeroImage = async (heroImageId: string, heroImageData: HeroImageFormData) => {
+    setIsSubmittingHeroImage(true);
+    try {
+      const validation = HeroImageFormSchema.safeParse(heroImageData);
+       if (!validation.success) {
+        const errorMessages = Object.values(validation.error.flatten().fieldErrors)
+                                  .map(errArray => errArray?.join(', '))
+                                  .filter(Boolean)
+                                  .join('; ');
+        throw new Error(`Invalid hero image data: ${errorMessages}`);
+      }
+      const validatedData = validation.data;
+      if (!db) throw new Error("Firestore database not initialized.");
+      const heroImageDocRef = doc(db, 'heroImages', heroImageId);
+      await updateDoc(heroImageDocRef, { ...validatedData });
+      toast({ title: "Hero Image Updated!", description: `${validatedData.altText} has been updated.` });
+      setIsHeroImageFormOpen(false);
+      setEditingHeroImage(null);
+      fetchHeroImages();
+      return true;
+    } catch (e: any) {
+      console.error("Failed to update hero image:", e);
+      let errorMessage = e.message || "Could not update hero image.";
+       if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Permission denied. Check Firestore rules for 'heroImages' (admin write).";
+      }
+      toast({ title: "Error Updating Hero Image", description: errorMessage, variant: "destructive" });
+      return false;
+    } finally {
+      setIsSubmittingHeroImage(false);
+    }
+  };
+
+  const handleHeroImageFormSubmit = async (values: HeroImageFormData) => {
+    if (editingHeroImage) {
+      return handleUpdateHeroImage(editingHeroImage.id, values);
+    } else {
+      return handleAddHeroImage(values);
+    }
+  };
+  
+  const openHeroImageForm = (heroImage: HeroImage | null = null) => {
+    setEditingHeroImage(heroImage);
+    setIsHeroImageFormOpen(true);
+  };
+
+  const handleConfirmDeleteHeroImage = async () => {
+    if (!heroImageToDelete || !db) {
+      toast({ title: "Deletion Error", description: "No hero image selected or DB error.", variant: "destructive" });
+      return;
+    }
+    try {
+      const heroImageDocRef = doc(db, 'heroImages', heroImageToDelete.id);
+      await deleteDoc(heroImageDocRef);
+      toast({ title: "Hero Image Deleted", description: `${heroImageToDelete.altText} deleted.` });
+      setHeroImageToDelete(null);
+      fetchHeroImages();
+    } catch (e: any) {
+      console.error("Failed to delete hero image:", e);
+      let errorMessage = e.message || "Could not delete hero image.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Permission denied. Check Firestore rules for 'heroImages' (admin delete).";
+      }
+      toast({ title: "Error Deleting Hero Image", description: errorMessage, variant: "destructive" });
+      setHeroImageToDelete(null);
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -557,6 +711,24 @@ export default function AdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!heroImageToDelete} onOpenChange={(open) => !open && setHeroImageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this hero image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the hero image
+              "{heroImageToDelete?.altText}" from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setHeroImageToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteHeroImage} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete Hero Image
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {selectedOrder && (
         <OrderDetailsDialog
           order={selectedOrder}
@@ -567,10 +739,31 @@ export default function AdminPage() {
         />
       )}
 
-
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
         <div className="flex gap-2 flex-wrap">
+          <Dialog open={isHeroImageFormOpen} onOpenChange={(isOpen) => {
+              setIsHeroImageFormOpen(isOpen);
+              if (!isOpen) setEditingHeroImage(null); 
+            }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" onClick={() => openHeroImageForm()}>
+                <ImageIcon className="mr-2 h-5 w-5" /> Add Hero Image
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle className="font-headline text-2xl">{editingHeroImage ? 'Edit Hero Image' : 'Add New Hero Image'}</DialogTitle>
+              </DialogHeader>
+              <AddHeroImageForm
+                onSubmitHeroImage={handleHeroImageFormSubmit}
+                isSubmitting={isSubmittingHeroImage}
+                initialData={editingHeroImage || undefined}
+                isEditing={!!editingHeroImage}
+              />
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={isCategoryFormOpen} onOpenChange={(isOpen) => {
               setIsCategoryFormOpen(isOpen);
               if (!isOpen) setEditingCategory(null); 
@@ -624,6 +817,80 @@ export default function AdminPage() {
           </Dialog>
         </div>
       </div>
+      
+      {/* Hero Image Management Card */}
+      <Card className="shadow-md rounded-lg border-border/60">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl font-headline">
+              <ImageIcon className="mr-3 h-6 w-6 text-primary" /> Hero Image Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingHeroImages ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Loading hero images...</p>
+              </div>
+            ) : heroImageError ? (
+              <p className="text-destructive text-center py-10">Error: {heroImageError}</p>
+            ) : heroImages.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[80px]">Preview</TableHead>
+                      <TableHead>Alt Text</TableHead>
+                      <TableHead className="text-center">Order</TableHead>
+                      <TableHead className="text-center">Active</TableHead>
+                      <TableHead>Link URL</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {heroImages.map((img) => (
+                      <TableRow key={img.id}>
+                        <TableCell>
+                          <div className="relative h-12 w-20 rounded-md overflow-hidden">
+                            <Image src={img.imageUrl} alt={img.altText} layout="fill" objectFit="cover" data-ai-hint={img.dataAiHint}/>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{img.altText}</TableCell>
+                        <TableCell className="text-center">{img.displayOrder}</TableCell>
+                        <TableCell className="text-center">
+                          {img.isActive ? <Check className="h-5 w-5 text-green-500 mx-auto" /> : <X className="h-5 w-5 text-red-500 mx-auto" />}
+                        </TableCell>
+                        <TableCell className="text-xs truncate max-w-[150px]">{img.linkUrl || 'N/A'}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10"
+                              onClick={() => openHeroImageForm(img)}
+                              aria-label={`Edit hero image ${img.altText}`}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => setHeroImageToDelete(img)}
+                              aria-label={`Delete hero image ${img.altText}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-10">No hero images found. Add some images for the homepage carousel.</p>
+            )}
+          </CardContent>
+        </Card>
+
 
       <div className="grid md:grid-cols-2 gap-8">
         <Card className="shadow-md rounded-lg border-border/60">
@@ -828,4 +1095,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

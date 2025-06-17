@@ -23,6 +23,16 @@ export interface Category {
   displayOrder?: number; // For controlling display order
 }
 
+export interface HeroImage {
+  id: string; // Firestore document ID
+  imageUrl: string;
+  altText: string;
+  dataAiHint: string;
+  displayOrder: number;
+  isActive: boolean;
+  linkUrl?: string; // Optional URL to link the hero image to
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -64,6 +74,9 @@ export type ProductFormData = Omit<Product, 'id' | 'rating'>;
 // Type for the category form
 export type CategoryFormData = Omit<Category, 'id'>;
 
+// Type for the hero image form
+export type HeroImageFormData = Omit<HeroImage, 'id'>;
+
 
 // Type for the order confirmation email generation
 export interface OrderConfirmationEmailInput {
@@ -90,3 +103,4 @@ export interface OrderConfirmationEmailOutput {
   subject: string;
   htmlBody: string;
 }
+
