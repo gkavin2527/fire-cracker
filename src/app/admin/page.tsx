@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData } from '@/types'; // Added CategoryFormData
+import type { Product, Category, CategoryFormData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -13,9 +13,9 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2 } from 'lucide-react'; // Added LayoutGrid, Trash2
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3 } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
-import AddCategoryForm from '@/components/admin/AddCategoryForm'; // Import AddCategoryForm
+import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore'; 
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore'; 
 import * as z from "zod";
 
 const ProductFormSchema = z.object({
@@ -48,7 +48,6 @@ const CategoryFormSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with dashes, e.g., 'sky-shots'."),
   imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
   imageHint: z.string().min(1, "Image hint is required.").max(50, "Image hint should be brief, max 50 chars."),
-  // iconName: z.string().optional(), // Removed
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
 
@@ -63,9 +62,13 @@ export default function AdminPage() {
   const [productError, setProductError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null); 
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
-  const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false); 
+  
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+
 
   const fetchAdminProducts = async () => {
     setIsLoadingProducts(true);
@@ -183,7 +186,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddCategory = async (categoryDataFromForm: CategoryFormData) => {
+  const handleAddNewCategory = async (categoryDataFromForm: CategoryFormData) => {
     setIsSubmittingCategory(true);
     try {
       const validation = CategoryFormSchema.safeParse(categoryDataFromForm);
@@ -207,12 +210,11 @@ export default function AdminPage() {
         title: "Category Added!",
         description: `${validatedData.name} has been successfully added.`,
       });
-      setIsAddCategoryDialogOpen(false);
+      setIsCategoryFormOpen(false);
       fetchAdminCategories(); 
       return true;
 
-    } catch (e: any)
-     {
+    } catch (e: any) {
       console.error('Failed to add category directly to Firestore:', e);
       let errorMessage = e.message || "Could not save the category.";
       if (e.code && e.code.startsWith('permission-denied')) {
@@ -232,6 +234,69 @@ export default function AdminPage() {
     }
   };
 
+  const handleUpdateCategory = async (categoryId: string, categoryDataFromForm: CategoryFormData) => {
+    setIsSubmittingCategory(true);
+    try {
+      const validation = CategoryFormSchema.safeParse(categoryDataFromForm);
+      if (!validation.success) {
+        const errorMessages = Object.values(validation.error.flatten().fieldErrors)
+                                  .map(errArray => errArray?.join(', '))
+                                  .filter(Boolean)
+                                  .join('; ');
+        throw new Error(`Invalid category data: ${errorMessages}`);
+      }
+      const validatedData = validation.data;
+
+      if (!db) {
+        throw new Error("Firestore database is not initialized. Check Firebase configuration.");
+      }
+
+      const categoryDocRef = doc(db, 'categories', categoryId);
+      await updateDoc(categoryDocRef, validatedData);
+
+      toast({
+        title: "Category Updated!",
+        description: `${validatedData.name} has been successfully updated.`,
+      });
+      setIsCategoryFormOpen(false);
+      setEditingCategory(null);
+      fetchAdminCategories(); 
+      return true;
+
+    } catch (e: any) {
+      console.error('Failed to update category in Firestore:', e);
+      let errorMessage = e.message || "Could not update the category.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+      } else if (e.message && e.message.includes('Invalid category data')) {
+          errorMessage = e.message;
+      }
+      
+      toast({
+        title: "Error Updating Category",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  };
+  
+  const handleCategoryFormSubmit = async (values: CategoryFormData) => {
+    if (editingCategory) {
+      return handleUpdateCategory(editingCategory.id, values);
+    } else {
+      return handleAddNewCategory(values);
+    }
+  };
+
+  const openCategoryForm = (category: Category | null = null) => {
+    setEditingCategory(category);
+    setIsCategoryFormOpen(true);
+  };
+
+
   const handleDeleteProduct = async () => {
     if (!productToDelete || !db) {
       toast({
@@ -249,8 +314,8 @@ export default function AdminPage() {
         title: "Product Deleted",
         description: `${productToDelete.name} has been successfully deleted.`,
       });
-      setProductToDelete(null); // Close dialog
-      fetchAdminProducts(); // Refresh product list
+      setProductToDelete(null); 
+      fetchAdminProducts(); 
     } catch (e: any) {
       console.error('Failed to delete product:', e);
       let errorMessage = e.message || "Could not delete the product.";
@@ -262,9 +327,44 @@ export default function AdminPage() {
         description: errorMessage,
         variant: "destructive",
       });
-      setProductToDelete(null); // Close dialog even on error
+      setProductToDelete(null); 
     }
   };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete || !db) {
+      toast({
+        title: "Deletion Error",
+        description: "No category selected for deletion or database not initialized.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const categoryDocRef = doc(db, 'categories', categoryToDelete.id);
+      await deleteDoc(categoryDocRef);
+      toast({
+        title: "Category Deleted",
+        description: `${categoryToDelete.name} has been successfully deleted.`,
+      });
+      setCategoryToDelete(null); 
+      fetchAdminCategories(); 
+    } catch (e: any) {
+      console.error('Failed to delete category:', e);
+      let errorMessage = e.message || "Could not delete the category.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+      }
+      toast({
+        title: "Error Deleting Category",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setCategoryToDelete(null); 
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -286,22 +386,46 @@ export default function AdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the category
+              "{categoryToDelete?.name}" from the database. Deleting a category does not delete products associated with it; those must be reassigned or deleted separately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteCategory} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete Category
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
         <div className="flex gap-2 flex-wrap">
-          <Dialog open={isAddCategoryDialogOpen} onOpenChange={setIsAddCategoryDialogOpen}>
+          <Dialog open={isCategoryFormOpen} onOpenChange={(isOpen) => {
+              setIsCategoryFormOpen(isOpen);
+              if (!isOpen) setEditingCategory(null); // Reset editing state when dialog closes
+            }}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" onClick={() => openCategoryForm()}>
                 <LayoutGrid className="mr-2 h-5 w-5" /> Add New Category
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle className="font-headline text-2xl">Add New Category</DialogTitle>
+                <DialogTitle className="font-headline text-2xl">{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
               </DialogHeader>
               <AddCategoryForm
-                onSubmitCategory={handleAddCategory}
+                onSubmitCategory={handleCategoryFormSubmit}
                 isSubmitting={isSubmittingCategory}
+                initialData={editingCategory ? { name: editingCategory.name, slug: editingCategory.slug, imageUrl: editingCategory.imageUrl, imageHint: editingCategory.imageHint, displayOrder: editingCategory.displayOrder } : undefined}
+                isEditing={!!editingCategory}
               />
             </DialogContent>
           </Dialog>
@@ -404,10 +528,8 @@ export default function AdminPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Slug</TableHead>
-                      {/* Icon column removed 
-                      <TableHead className="hidden sm:table-cell">Icon</TableHead>
-                      */}
                       <TableHead className="text-right hidden sm:table-cell">Order</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -415,10 +537,27 @@ export default function AdminPage() {
                       <TableRow key={category.id}>
                         <TableCell className="font-medium">{category.name}</TableCell>
                         <TableCell>{category.slug}</TableCell>
-                        {/* Icon cell removed
-                        <TableCell className="hidden sm:table-cell">{category.iconName || 'N/A'}</TableCell>
-                        */}
                         <TableCell className="text-right hidden sm:table-cell">{category.displayOrder ?? 'N/A'}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10"
+                              onClick={() => openCategoryForm(category)}
+                              aria-label={`Edit category ${category.name}`}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => setCategoryToDelete(category)}
+                              aria-label={`Delete category ${category.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
