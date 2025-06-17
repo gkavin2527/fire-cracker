@@ -76,7 +76,7 @@ export default function AdminPage() {
         try {
           const errorData = await response.json();
           if (errorData && errorData.error) {
-            apiErrorMessage = errorData.error; 
+            apiErrorMessage = errorData.error;
             if (errorData.details) {
               apiErrorMessage += ` Details: ${errorData.details}`;
             }
@@ -85,6 +85,7 @@ export default function AdminPage() {
             }
           }
         } catch (jsonError) {
+          // If response is not JSON, try to get text
           try {
             const responseText = await response.text();
             if (responseText) {
@@ -103,17 +104,17 @@ export default function AdminPage() {
         title: "Product Added!",
         description: `${addedProduct.name} has been successfully added.`,
       });
-      setIsAddProductDialogOpen(false); 
+      setIsAddProductDialogOpen(false);
       fetchAdminProducts(); // Refresh product list
-      return true; 
+      return true;
     } catch (e: any) {
-      console.error('Failed to add product:', e);
+      console.error('Failed to add product:', e); // Log the full error object for more details
       toast({
         title: "Error Adding Product",
         description: e.message || "Could not save the product to the server.",
         variant: "destructive",
       });
-      return false; 
+      return false;
     } finally {
       setIsSubmittingProduct(false);
     }
@@ -134,7 +135,7 @@ export default function AdminPage() {
               <DialogHeader>
                 <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
               </DialogHeader>
-              <AddProductForm 
+              <AddProductForm
                 onSubmitProduct={handleAddProduct}
                 isSubmitting={isSubmittingProduct}
               />
@@ -183,7 +184,7 @@ export default function AdminPage() {
               </Table>
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-10">No products found. Add some products or seed the database.</p>
+            <p className="text-muted-foreground text-center py-10">No products found. Add some products.</p>
           )}
         </CardContent>
       </Card>
