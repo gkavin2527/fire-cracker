@@ -73,14 +73,33 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
-        let errorData;
+        let apiErrorMessage = `Failed to add product. Status: ${response.status}`;
         try {
-            errorData = await response.json();
+          // Try to parse the error response as JSON
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            apiErrorMessage = errorData.error; // Use the error message from the API's JSON response
+            if (errorData.details) {
+              apiErrorMessage += ` Details: ${errorData.details}`;
+            }
+            if (errorData.firestoreErrorCode) {
+              apiErrorMessage += ` (Code: ${errorData.firestoreErrorCode})`;
+            }
+          }
         } catch (jsonError) {
+          // If JSON parsing fails, try to get the raw text response
+          try {
             const responseText = await response.text();
-            throw new Error(`Server returned non-JSON error (Status: ${response.status}): ${responseText.substring(0,100)}...`);
+            if (responseText) {
+              // Use the raw text, as it might contain useful error info (like "Firestore permission denied...")
+              apiErrorMessage = `API error (Status: ${response.status}): ${responseText.substring(0, 250)}${responseText.length > 250 ? "..." : ""}`;
+            }
+          } catch (textError) {
+            // If getting text also fails, stick with the basic status code error message
+            // apiErrorMessage is already initialized with this
+          }
         }
-        throw new Error(errorData.error || `Failed to add product. Status: ${response.status}`);
+        throw new Error(apiErrorMessage);
       }
 
       const addedProduct: Product = await response.json();
@@ -116,13 +135,11 @@ export default function AdminPage() {
       try {
         result = await response.json();
       } catch (jsonError: any) {
-        // If response is not JSON, try to get text for more context
         const responseText = await response.text();
         throw new Error(`Failed to parse seed response as JSON (Status: ${response.status}). Response body: ${responseText.substring(0, 200)}...`);
       }
 
       if (!response.ok) {
-        // Use error and details from JSON response if available
         const errorMessage = result.error || `Failed to seed database. Status: ${response.status}`;
         const errorDetails = result.details ? `Details: ${result.details}` : '';
         throw new Error(`${errorMessage} ${errorDetails}`.trim());
