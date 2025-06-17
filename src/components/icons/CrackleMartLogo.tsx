@@ -26,27 +26,179 @@ const GKCrackersLogo = ({ className }: { className?: string }) => {
         textAnchor="middle"
       >
         GK Crackers
-        <animate 
-            attributeName="opacity"
-            values="1;0.7;1"
-            dur="2s"
+        <animateTransform
+            attributeName="transform"
+            type="scale"
+            values="1; 1.03; 1"
+            begin="0s"
+            dur="1.5s"
             repeatCount="indefinite"
+            additive="sum"
+            transform-origin="center"
         />
       </text>
-      {/* Path 1 - Sparkle */}
-      <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="none" strokeLinecap="round">
-        <animate attributeName="d" values="M20 42 Q 35 50, 50 42 T 80 42; M20 42 Q 35 34, 50 42 T 80 42; M20 42 Q 35 50, 50 42 T 80 42" dur="1.8s" repeatCount="indefinite"/>
-        <animate attributeName="stroke-dasharray" values="0 100; 70 30; 0 100" dur="1.8s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0;1;0.7;0" dur="1.8s" repeatCount="indefinite"/>
-      </path>
-       {/* Path 2 - Sparkle */}
-       <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="none" strokeLinecap="round">
-        <animate attributeName="d" values="M120 42 Q 135 34, 150 42 T 180 42; M120 42 Q 135 50, 150 42 T 180 42; M120 42 Q 135 34, 150 42 T 180 42" dur="2.0s" repeatCount="indefinite"/>
-         <animate attributeName="stroke-dasharray" values="100 0; 30 70; 100 0" dur="2.0s" repeatCount="indefinite" />
-         <animate attributeName="opacity" values="0;1;0.7;0" dur="2.0s" begin="0.2s" repeatCount="indefinite"/>
-      </path>
+
+      {/* Spark 1 */}
+      <g>
+        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
+            <animate
+                attributeName="d"
+                values="M100 25 L100 25; M90 15 L110 35; M100 25 L100 25"
+                dur="1.2s"
+                begin="0s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0; -15 -10; -20 -15"
+                dur="1.2s"
+                begin="0s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="scale"
+                values="0; 1; 0.5; 0"
+                dur="1.2s"
+                begin="0s"
+                repeatCount="indefinite"
+                additive="sum" 
+                transform-origin="center"/>
+            <animate
+                attributeName="opacity"
+                values="0; 1; 0.5; 0"
+                dur="1.2s"
+                begin="0s"
+                repeatCount="indefinite" />
+        </path>
+      </g>
+      
+      {/* Spark 2 */}
+      <g>
+        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
+            <animate
+                attributeName="d"
+                values="M100 25 L100 25; M105 10 L95 40; M100 25 L100 25"
+                dur="1.2s"
+                begin="0.3s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0; 10 -12; 18 -18"
+                dur="1.2s"
+                begin="0.3s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="scale"
+                values="0; 1; 0.5; 0"
+                dur="1.2s"
+                begin="0.3s"
+                repeatCount="indefinite"
+                additive="sum"
+                transform-origin="center" />
+            <animate
+                attributeName="opacity"
+                values="0; 1; 0.5; 0"
+                dur="1.2s"
+                begin="0.3s"
+                repeatCount="indefinite" />
+        </path>
+      </g>
+
+       {/* Spark 3 - more horizontal */}
+      <g>
+        <path stroke="hsl(var(--accent))" strokeWidth="1.5" fill="hsl(var(--accent))" strokeLinecap="round">
+            <animate
+                attributeName="d"
+                values="M100 25 L100 25; M80 25 L120 25; M100 25 L100 25" 
+                dur="1.2s"
+                begin="0.6s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0; 0 5; 0 8" 
+                dur="1.2s"
+                begin="0.6s"
+                repeatCount="indefinite" />
+            <animateTransform
+                attributeName="transform"
+                type="scale"
+                values="0; 1; 0.3; 0"
+                dur="1.2s"
+                begin="0.6s"
+                repeatCount="indefinite"
+                additive="sum"
+                transform-origin="center" />
+            <animate
+                attributeName="opacity"
+                values="0; 1; 0.6; 0"
+                dur="1.2s"
+                begin="0.6s"
+                repeatCount="indefinite" />
+        </path>
+      </g>
+        {/* Spark 4 - small, quick pop */}
+      <g>
+        <circle r="1" fill="hsl(var(--accent))">
+            <animate
+                attributeName="cx"
+                values="100; 95; 100"
+                dur="0.8s"
+                begin="0.1s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="cy"
+                values="25; 20; 25"
+                dur="0.8s"
+                begin="0.1s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="r"
+                values="0; 2.5; 0"
+                dur="0.8s"
+                begin="0.1s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="opacity"
+                values="0; 1; 0"
+                dur="0.8s"
+                begin="0.1s"
+                repeatCount="indefinite" />
+        </circle>
+      </g>
+       <g>
+        <circle r="1" fill="hsl(var(--accent))">
+            <animate
+                attributeName="cx"
+                values="100; 108; 100"
+                dur="0.8s"
+                begin="0.5s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="cy"
+                values="25; 30; 25"
+                dur="0.8s"
+                begin="0.5s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="r"
+                values="0; 2; 0"
+                dur="0.8s"
+                begin="0.5s"
+                repeatCount="indefinite" />
+            <animate
+                attributeName="opacity"
+                values="0; 1; 0"
+                dur="0.8s"
+                begin="0.5s"
+                repeatCount="indefinite" />
+        </circle>
+      </g>
     </svg>
   );
 };
 
 export default GKCrackersLogo;
+
