@@ -39,20 +39,35 @@ const Header = () => {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
+      setCategoriesError(null);
       try {
         const response = await fetch('/api/categories');
         if (!response.ok) {
-          throw new Error('Failed to fetch categories');
+          let errorBody = "No additional error body from API or failed to parse error body.";
+          try {
+            const errorJson = await response.json();
+            errorBody = JSON.stringify(errorJson);
+          } catch (e) {
+            try {
+              errorBody = await response.text();
+              if (!errorBody.trim()) errorBody = "Empty error body from API."
+            } catch (textError) {
+               errorBody = "Could not parse error body as JSON or text."
+            }
+          }
+          console.error(`Header: Failed to fetch categories. Status: ${response.status}. API Response: ${errorBody}`);
+          throw new Error(`Failed to fetch categories. Status: ${response.status}. Response: ${errorBody}`);
         }
         const data: Category[] = await response.json();
         setCategories(data);
-      } catch (error) {
-        console.error("Error fetching categories for header:", error);
-        // Keep empty or mock categories if fetch fails
+      } catch (error: any) {
+        console.error("Header: Error fetching categories:", error.message);
+        setCategoriesError(error.message || 'Could not load categories.');
       } finally {
         setCategoriesLoading(false);
       }
@@ -90,6 +105,8 @@ const Header = () => {
           <DropdownMenuSeparator />
           {categoriesLoading ? (
             <DropdownMenuItem disabled>Loading categories...</DropdownMenuItem>
+          ) : categoriesError ? (
+            <DropdownMenuItem disabled>Error: {categoriesError.substring(0,100)}...</DropdownMenuItem>
           ) : categories.length > 0 ? (
             categories.map((category) => {
               const Icon = getIcon(category.iconName);
