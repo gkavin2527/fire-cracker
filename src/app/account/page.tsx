@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Loader2, Package, User, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Loader2, Package, User, AlertCircle, ShoppingBag, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -71,7 +71,6 @@ const AccountPage = () => {
     if (!authLoading && user) {
       fetchOrders();
     } else if (!authLoading && !user) {
-      // Should be caught by ProtectedPage, but good to handle
       setIsLoadingOrders(false);
     }
   }, [user, authLoading]);
@@ -86,7 +85,6 @@ const AccountPage = () => {
   }
 
   if (!user) {
-    // This case should be handled by ProtectedPage redirecting to /login
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <AlertCircle className="h-16 w-16 text-destructive mb-4" />
@@ -114,7 +112,6 @@ const AccountPage = () => {
         <CardContent className="space-y-2 text-sm">
           <p><strong className="font-medium">Name:</strong> {user.displayName || 'N/A'}</p>
           <p><strong className="font-medium">Email:</strong> {user.email}</p>
-          {/* Add more profile details or edit functionality later if needed */}
         </CardContent>
       </Card>
 
@@ -149,13 +146,17 @@ const AccountPage = () => {
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center">Status</TableHead>
-                    {/* <TableHead className="text-right">Actions</TableHead> */}
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {orders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-mono text-xs">{order.id}</TableCell>
+                      <TableCell className="font-mono text-xs hover:text-primary hover:underline">
+                        <Link href={`/account/orders/${order.id}`}>
+                          {order.id}
+                        </Link>
+                      </TableCell>
                       <TableCell>{format(order.orderDate, 'MMM dd, yyyy HH:mm')}</TableCell>
                       <TableCell className="text-right font-medium">${order.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-center">
@@ -163,13 +164,13 @@ const AccountPage = () => {
                           {order.status}
                         </Badge>
                       </TableCell>
-                      {/*
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/account/orders/${order.id}`}>View</Link>
+                        <Button variant="ghost" size="icon" asChild aria-label="View order details">
+                          <Link href={`/account/orders/${order.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
                         </Button>
                       </TableCell>
-                      */}
                     </TableRow>
                   ))}
                 </TableBody>
