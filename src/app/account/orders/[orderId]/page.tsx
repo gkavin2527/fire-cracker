@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,18 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, AlertTriangle, ArrowLeft, Package, User, Mail, MapPin, CalendarDays, DollarSign, ListOrdered, ShoppingBag } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, Package, User, Mail, MapPin, CalendarDays, DollarSign, ListOrdered, ShoppingBag, XCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const statusColors: Record<Order['status'], string> = {
   Pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -27,17 +38,20 @@ const UserOrderDetailsPage = () => {
   const params = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
       if (!user || !orderId) {
         setIsLoading(false);
-        if (!user && !authLoading) router.push('/login'); // Redirect if not logged in
+        if (!user && !authLoading) router.push('/login');
         return;
       }
 
@@ -51,7 +65,6 @@ const UserOrderDetailsPage = () => {
 
         if (orderDocSnap.exists()) {
           const orderData = orderDocSnap.data() as Omit<Order, 'id' | 'orderDate'> & { orderDate: Timestamp };
-          // Security check: ensure the order belongs to the current user
           if (orderData.userId !== user.uid) {
             setError("Access denied. You do not have permission to view this order.");
             setOrder(null);
@@ -79,6 +92,28 @@ const UserOrderDetailsPage = () => {
     }
   }, [orderId, user, authLoading, router]);
 
+  const handleCancelOrder = async () => {
+    if (!order || !db) {
+      toast({ title: "Error", description: "Order or database not available.", variant: "destructive" });
+      return;
+    }
+    setIsCancelling(true);
+    try {
+      const orderDocRef = doc(db, 'orders', order.id);
+      await updateDoc(orderDocRef, { status: 'Cancelled' });
+      setOrder(prevOrder => prevOrder ? { ...prevOrder, status: 'Cancelled' } : null);
+      toast({ title: "Order Cancelled", description: "Your order has been successfully cancelled." });
+    } catch (e: any) {
+      console.error("Failed to cancel order:", e);
+      toast({ title: "Cancellation Failed", description: e.message || "Could not cancel the order.", variant: "destructive" });
+    } finally {
+      setIsCancelling(false);
+      setShowCancelConfirm(false);
+    }
+  };
+
+  const canCancelOrder = order && (order.status === 'Pending' || order.status === 'Processing');
+
   if (isLoading || authLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
@@ -102,7 +137,6 @@ const UserOrderDetailsPage = () => {
   }
 
   if (!order) {
-    // This case should ideally be covered by error state, but as a fallback
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
         <ShoppingBag className="h-16 w-16 text-muted-foreground mb-4" />
@@ -117,6 +151,29 @@ const UserOrderDetailsPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to cancel this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will mark your order as cancelled.
+              If payment has been processed, please contact support for refund information.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowCancelConfirm(false)} disabled={isCancelling}>Keep Order</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOrder}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              disabled={isCancelling}
+            >
+              {isCancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+              {isCancelling ? "Cancelling..." : "Yes, Cancel Order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Button onClick={() => router.push('/account')} variant="outline" className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Order History
       </Button>
@@ -195,7 +252,16 @@ const UserOrderDetailsPage = () => {
             </div>
           </div>
 
-          <div className="text-center mt-8">
+          <div className="text-center mt-8 flex flex-col sm:flex-row justify-center gap-4">
+            {canCancelOrder && (
+              <Button
+                variant="destructive"
+                onClick={() => setShowCancelConfirm(true)}
+                disabled={isCancelling}
+              >
+                <XCircle className="mr-2 h-4 w-4" /> Cancel Order
+              </Button>
+            )}
             <Link href="/products" passHref>
               <Button variant="outline">
                 <Package className="mr-2 h-4 w-4" /> Continue Shopping
@@ -209,3 +275,4 @@ const UserOrderDetailsPage = () => {
 };
 
 export default UserOrderDetailsPage;
+
