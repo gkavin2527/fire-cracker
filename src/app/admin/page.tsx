@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData } from '@/types';
+import type { Product, Category, CategoryFormData, ProductFormData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -61,13 +61,16 @@ export default function AdminPage() {
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
   const [productError, setProductError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null); 
-  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
 
 
   const fetchAdminProducts = async () => {
@@ -128,7 +131,7 @@ export default function AdminPage() {
     fetchAdminCategories();
   }, []);
 
-  const handleAddProduct = async (productDataFromForm: Omit<Product, 'id' | 'rating'>) => {
+  const handleAddProduct = async (productDataFromForm: ProductFormData) => {
     setIsSubmittingProduct(true);
     try {
       const validation = ProductFormSchema.safeParse(productDataFromForm);
@@ -141,7 +144,7 @@ export default function AdminPage() {
       }
       
       const validatedData = validation.data;
-      const newProductData: Omit<Product, 'id' | 'rating'> & { rating?: number } = {
+      const newProductData: ProductFormData & { rating?: number } = {
         name: validatedData.name,
         description: validatedData.description,
         price: validatedData.price,
@@ -162,7 +165,7 @@ export default function AdminPage() {
         title: "Product Added!",
         description: `${newProductData.name} has been successfully added.`,
       });
-      setIsAddProductDialogOpen(false);
+      setIsProductFormOpen(false);
       fetchAdminProducts(); 
       return true;
 
@@ -184,6 +187,68 @@ export default function AdminPage() {
     } finally {
       setIsSubmittingProduct(false);
     }
+  };
+
+  const handleUpdateProduct = async (productId: string, productDataFromForm: ProductFormData) => {
+    setIsSubmittingProduct(true);
+    try {
+      const validation = ProductFormSchema.safeParse(productDataFromForm);
+      if (!validation.success) {
+        const errorMessages = Object.values(validation.error.flatten().fieldErrors)
+                                  .map(errArray => errArray?.join(', '))
+                                  .filter(Boolean)
+                                  .join('; ');
+        throw new Error(`Invalid product data: ${errorMessages}`);
+      }
+      const validatedData = validation.data;
+
+      if (!db) {
+        throw new Error("Firestore database is not initialized. Check Firebase configuration.");
+      }
+
+      const productDocRef = doc(db, 'products', productId);
+      await updateDoc(productDocRef, validatedData);
+
+      toast({
+        title: "Product Updated!",
+        description: `${validatedData.name} has been successfully updated.`,
+      });
+      setIsProductFormOpen(false);
+      setEditingProduct(null);
+      fetchAdminProducts(); 
+      return true;
+
+    } catch (e: any) {
+      console.error('Failed to update product in Firestore:', e);
+      let errorMessage = e.message || "Could not update the product.";
+      if (e.code && e.code.startsWith('permission-denied')) {
+          errorMessage = "Firestore permission denied. Check your Firestore security rules.";
+      } else if (e.message && e.message.includes('Invalid product data')) {
+          errorMessage = e.message;
+      }
+      
+      toast({
+        title: "Error Updating Product",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const handleProductFormSubmit = async (values: ProductFormData) => {
+    if (editingProduct) {
+      return handleUpdateProduct(editingProduct.id, values);
+    } else {
+      return handleAddProduct(values);
+    }
+  };
+
+  const openProductForm = (product: Product | null = null) => {
+    setEditingProduct(product);
+    setIsProductFormOpen(true);
   };
 
   const handleAddNewCategory = async (categoryDataFromForm: CategoryFormData) => {
@@ -410,7 +475,7 @@ export default function AdminPage() {
         <div className="flex gap-2 flex-wrap">
           <Dialog open={isCategoryFormOpen} onOpenChange={(isOpen) => {
               setIsCategoryFormOpen(isOpen);
-              if (!isOpen) setEditingCategory(null); // Reset editing state when dialog closes
+              if (!isOpen) setEditingCategory(null); 
             }}>
             <DialogTrigger asChild>
               <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" onClick={() => openCategoryForm()}>
@@ -430,19 +495,32 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+          <Dialog open={isProductFormOpen} onOpenChange={(isOpen) => {
+              setIsProductFormOpen(isOpen);
+              if (!isOpen) setEditingProduct(null);
+            }}>
             <DialogTrigger asChild>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+               <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => openProductForm()}>
                 <PlusCircle className="mr-2 h-5 w-5" /> Add New Product
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle className="font-headline text-2xl">Add New Product</DialogTitle>
+                <DialogTitle className="font-headline text-2xl">{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
               </DialogHeader>
               <AddProductForm
-                onSubmitProduct={handleAddProduct}
+                onSubmitProduct={handleProductFormSubmit}
                 isSubmitting={isSubmittingProduct}
+                initialData={editingProduct ? { 
+                    name: editingProduct.name, 
+                    description: editingProduct.description, 
+                    price: editingProduct.price, 
+                    category: editingProduct.category, 
+                    imageUrl: editingProduct.imageUrl, 
+                    imageHint: editingProduct.imageHint, 
+                    stock: editingProduct.stock 
+                } : undefined}
+                isEditing={!!editingProduct}
               />
             </DialogContent>
           </Dialog>
@@ -485,7 +563,16 @@ export default function AdminPage() {
                         <TableCell>{product.category}</TableCell>
                         <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right hidden sm:table-cell">{product.stock ?? 'N/A'}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10"
+                              onClick={() => openProductForm(product)}
+                              aria-label={`Edit product ${product.name}`}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -600,3 +687,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    

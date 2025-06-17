@@ -16,8 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Product, Category } from '@/types';
-// import { categories } from '@/lib/mockData'; // Removed mock data import
+import type { Product, Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -32,14 +31,16 @@ const formSchema = z.object({
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
-type ProductFormValues = Omit<Product, 'id' | 'rating'>;
+type ProductFormValues = ProductFormData; // Omit<Product, 'id' | 'rating'> is already ProductFormData
 
 interface AddProductFormProps {
   onSubmitProduct: (product: ProductFormValues) => Promise<boolean>;
   isSubmitting: boolean;
+  initialData?: ProductFormValues;
+  isEditing?: boolean;
 }
 
-const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) => {
+const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing = false }: AddProductFormProps) => {
   const [formCategories, setFormCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       name: "",
       description: "",
       price: 0,
@@ -57,6 +58,22 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
       stock: 0,
     },
   });
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset(initialData);
+    } else {
+      form.reset({
+        name: "",
+        description: "",
+        price: 0,
+        category: "",
+        imageUrl: "https://placehold.co/400x300.png",
+        imageHint: "product image",
+        stock: 0,
+      });
+    }
+  }, [initialData, form]);
 
   useEffect(() => {
     const fetchCategoriesForForm = async () => {
@@ -87,8 +104,16 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
 
   async function onSubmit(values: ProductFormValues) {
     const success = await onSubmitProduct(values);
-    if (success) {
-      form.reset();
+    if (success && !isEditing) {
+      form.reset({
+        name: "",
+        description: "",
+        price: 0,
+        category: "",
+        imageUrl: "https://placehold.co/400x300.png",
+        imageHint: "product image",
+        stock: 0,
+      });
     }
   }
 
@@ -155,7 +180,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingCategories || !!categoryError || formCategories.length === 0}>
+              <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} disabled={isLoadingCategories || !!categoryError || formCategories.length === 0}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder={
@@ -177,7 +202,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
                      <SelectItem value="no-cat" disabled>No categories available</SelectItem>
                   ) : (
                     formCategories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.name}> {/* Assuming API returns 'name' field to match product.category schema */}
+                      <SelectItem key={cat.id} value={cat.name}>
                         {cat.name}
                       </SelectItem>
                     ))
@@ -218,10 +243,10 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Adding Product...
+              {isEditing ? "Updating Product..." : "Adding Product..."}
             </>
           ) : (
-            "Add Product"
+            isEditing ? "Update Product" : "Add Product"
           )}
         </Button>
       </form>
@@ -230,3 +255,5 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting }: AddProductFormProps) 
 };
 
 export default AddProductForm;
+
+    
