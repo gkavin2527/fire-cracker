@@ -1,5 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Product {
   id: string;
@@ -29,7 +30,7 @@ export interface CartItem {
 
 export interface ShippingAddress {
   fullName: string;
-  email: string; // Added email field
+  email: string; 
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -37,13 +38,21 @@ export interface ShippingAddress {
   country: string;
 }
 
+export interface UserProfile {
+  uid: string;
+  email?: string | null; 
+  displayName?: string | null; 
+  photoURL?: string | null; 
+  defaultShippingAddress?: ShippingAddress;
+}
+
 export interface Order {
-  id: string; // Firestore document ID, same as the one generated client-side
-  userId: string; // ID of the user who placed the order
+  id: string; 
+  userId: string; 
   items: CartItem[];
   shippingAddress: ShippingAddress;
   totalAmount: number;
-  orderDate: any; // Will be Firestore Timestamp, 'any' for now to avoid build issues before Firestore import
+  orderDate: Timestamp; 
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 }
 

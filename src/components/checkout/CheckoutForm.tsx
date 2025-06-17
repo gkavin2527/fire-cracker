@@ -18,13 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import type { ShippingAddress, OrderConfirmationEmailInput, Order } from "@/types";
+import type { ShippingAddress, OrderConfirmationEmailInput, Order, UserProfile } from "@/types";
 import { Send, Loader2 } from "lucide-react";
 import { generateOrderConfirmationEmail } from "@/ai/flows/generate-order-confirmation-email-flow";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from '@/lib/firebase';
-import { doc, setDoc, Timestamp, collection } from 'firebase/firestore'; // Removed addDoc as setDoc is used with specific ID
+import { doc, setDoc, Timestamp, collection, getDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -46,7 +46,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
   const { getCartTotal, cartItems, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); 
+  const { user, loading: authLoading } = useAuth(); 
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const form = useForm<CheckoutFormValues>({
@@ -61,6 +61,31 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       country: "",
     },
   });
+
+  useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      if (user && db) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const userProfile = userDocSnap.data() as UserProfile;
+            if (userProfile.defaultShippingAddress) {
+              form.reset(userProfile.defaultShippingAddress);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch default shipping address:", error);
+          // Optionally, show a toast if fetching default address fails, but don't block checkout
+        }
+      }
+    };
+
+    if (!authLoading && user) {
+      fetchDefaultAddress();
+    }
+  }, [user, authLoading, form]);
+
 
   async function onSubmit(values: CheckoutFormValues) {
     if (!user) {
@@ -148,7 +173,6 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
       const emailContent = await generateOrderConfirmationEmail(emailInput);
       
-      // Send email using the API route
       const emailApiResponse = await fetch('/api/send-email', {
         method: 'POST',
         headers: {
@@ -163,7 +187,10 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
       if (!emailApiResponse.ok) {
         const errorData = await emailApiResponse.json();
-        throw new Error(errorData.error || `Failed to send email via API (status: ${emailApiResponse.status})`);
+        const apiError = new Error(errorData.error || `Failed to send email via API (status: ${emailApiResponse.status})`);
+        (apiError as any).details = errorData.details;
+        (apiError as any).code = errorData.code;
+        throw apiError;
       }
         
       toast({
@@ -172,11 +199,13 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       });
 
     } catch (emailError: any) {
-      console.error("Failed to generate or send order confirmation email:", emailError);
+      console.error("[CheckoutForm] Failed to generate or send order confirmation email:", emailError);
+      const description = `Could not send order confirmation email. Your order ${orderId} was saved. Details: ${emailError.message || 'Unknown email error.'}${emailError.code ? ` (Code: ${emailError.code})` : ''}`;
       toast({
-        title: "Email Sending Failed",
-        description: `Could not send the order confirmation email: ${emailError.message}. Your order was still placed and saved.`,
+        title: "Email Sending Issue",
+        description: description.substring(0, 200) + (description.length > 200 ? '...' : ''), // Keep toast concise
         variant: "destructive",
+        duration: 7000, // Longer duration for important error
       });
     }
 
@@ -201,7 +230,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} disabled={isProcessingOrder} />
+                    <Input placeholder="John Doe" {...field} disabled={isProcessingOrder || authLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,9 +241,9 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>Contact Email for Shipping</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="you@example.com" {...field} disabled={isProcessingOrder} />
+                    <Input type="email" placeholder="you@example.com" {...field} disabled={isProcessingOrder || authLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -227,7 +256,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Address Line 1</FormLabel>
                   <FormControl>
-                    <Input placeholder="123 Main St" {...field} disabled={isProcessingOrder} />
+                    <Input placeholder="123 Main St" {...field} disabled={isProcessingOrder || authLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -240,7 +269,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Address Line 2 (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Apartment, studio, or floor" {...field} disabled={isProcessingOrder} />
+                    <Input placeholder="Apartment, studio, or floor" {...field} disabled={isProcessingOrder || authLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -254,7 +283,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                   <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input placeholder="New York" {...field} disabled={isProcessingOrder} />
+                      <Input placeholder="New York" {...field} disabled={isProcessingOrder || authLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -267,7 +296,7 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                   <FormItem>
                     <FormLabel>Postal Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="10001" {...field} disabled={isProcessingOrder} />
+                      <Input placeholder="10001" {...field} disabled={isProcessingOrder || authLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -281,13 +310,13 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
                 <FormItem>
                   <FormLabel>Country</FormLabel>
                   <FormControl>
-                    <Input placeholder="United States" {...field} disabled={isProcessingOrder} />
+                    <Input placeholder="United States" {...field} disabled={isProcessingOrder || authLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isProcessingOrder || !cartItems.length || !user}>
+            <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={isProcessingOrder || authLoading || !cartItems.length || !user}>
               {isProcessingOrder ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...
