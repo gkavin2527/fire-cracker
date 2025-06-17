@@ -43,7 +43,7 @@ interface CheckoutFormProps {
 }
 
 const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
-  const { getCartTotal, cartItems, clearCart } = useCart();
+  const { getCartSubtotal, getShippingCost, getGrandTotal, cartItems, clearCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth(); 
@@ -121,6 +121,9 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 
     const orderId = `GKC-${Date.now()}`; 
     const shippingDetails: ShippingAddress = { ...values };
+    const subtotal = getCartSubtotal();
+    const shippingCost = getShippingCost();
+    const grandTotal = getGrandTotal();
     
     try {
       // Firestore transaction to check stock and update
@@ -158,7 +161,9 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
         userId: user.uid,
         items: cartItems,
         shippingAddress: shippingDetails,
-        totalAmount: getCartTotal(),
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        grandTotal: grandTotal,
         orderDate: Timestamp.now(), 
         status: 'Pending',
       };
@@ -196,7 +201,9 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
           imageUrl: item.product.imageUrl,
           imageHint: item.product.imageHint || 'product',
         })),
-        totalAmount: getCartTotal(),
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        grandTotal: grandTotal,
         shippingAddress: {
           fullName: shippingDetails.fullName,
           addressLine1: shippingDetails.addressLine1,
@@ -377,6 +384,3 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 };
 
 export default CheckoutForm;
-
-
-    

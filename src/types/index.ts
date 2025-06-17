@@ -51,7 +51,9 @@ export interface Order {
   userId: string; 
   items: CartItem[];
   shippingAddress: ShippingAddress;
-  totalAmount: number;
+  subtotal: number;
+  shippingCost: number;
+  grandTotal: number;
   orderDate: Timestamp; 
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 }
@@ -69,7 +71,9 @@ export interface OrderConfirmationEmailInput {
   customerEmail: string;
   orderId: string;
   items: Array<{ name: string; quantity: number; price: number; imageUrl: string; imageHint: string }>;
-  totalAmount: number;
+  subtotal: number;
+  shippingCost: number;
+  grandTotal: number;
   shippingAddress: {
     fullName: string;
     addressLine1: string;

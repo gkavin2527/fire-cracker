@@ -1,8 +1,11 @@
+
 "use client";
 
 import type { CartItem, Product } from '@/types';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
+
+const SHIPPING_COST_FLAT_RATE = 5.00; // Flat shipping rate
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -10,7 +13,9 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  getCartTotal: () => number;
+  getCartSubtotal: () => number;
+  getShippingCost: () => number;
+  getGrandTotal: () => number;
   getItemCount: () => number;
 }
 
@@ -75,8 +80,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartItems([]);
   };
 
-  const getCartTotal = () => {
+  const getCartSubtotal = () => {
     return cartItems.reduce((total, item) => total + item.product.price * item.quantity, 0);
+  };
+
+  const getShippingCost = () => {
+    if (cartItems.length === 0) return 0; // No shipping cost for empty cart
+    return SHIPPING_COST_FLAT_RATE;
+  };
+
+  const getGrandTotal = () => {
+    return getCartSubtotal() + getShippingCost();
   };
 
   const getItemCount = () => {
@@ -91,7 +105,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         removeFromCart,
         updateQuantity,
         clearCart,
-        getCartTotal,
+        getCartSubtotal,
+        getShippingCost,
+        getGrandTotal,
         getItemCount,
       }}
     >

@@ -779,7 +779,7 @@ export default function AdminPage() {
                         <TableCell className="font-mono text-xs">{order.id}</TableCell>
                         <TableCell className="font-medium">{order.shippingAddress.fullName}</TableCell>
                         <TableCell>{format(new Date(order.orderDate), 'MMM dd, yyyy HH:mm')}</TableCell>
-                        <TableCell className="text-right">${order.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${order.grandTotal.toFixed(2)}</TableCell>
                         <TableCell>{order.status}</TableCell>
                         <TableCell className="text-right space-x-1">
                            <Button 
@@ -818,5 +818,3 @@ export default function AdminPage() {
     </div>
   );
 }
-    
-    

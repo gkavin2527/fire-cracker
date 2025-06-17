@@ -6,28 +6,30 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { CheckCircle, Package, HomeIcon, MailIcon } from 'lucide-react';
+import { CheckCircle, Package, HomeIcon, MailIcon, DollarSign, Truck } from 'lucide-react';
 import type { CartItem, ShippingAddress } from '@/types';
 import Image from 'next/image';
 
-interface OrderDetails {
+interface StoredOrderDetails {
   orderId: string;
   shippingDetails: ShippingAddress; 
   items: CartItem[];
-  total: number;
+  subtotal: number;
+  shippingCost: number;
+  grandTotal: number;
 }
 
 const OrderConfirmationPage = () => {
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
-  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
+  const [orderDetails, setOrderDetails] = useState<StoredOrderDetails | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedOrder = sessionStorage.getItem('lastOrder');
       if (storedOrder) {
-        const parsedOrder: OrderDetails = JSON.parse(storedOrder);
+        const parsedOrder: StoredOrderDetails = JSON.parse(storedOrder);
         if (parsedOrder.orderId === orderId) {
           setOrderDetails(parsedOrder);
         } else {
@@ -66,7 +68,7 @@ const OrderConfirmationPage = () => {
         <CardContent className="p-6 sm:p-8 space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-2 font-headline">Shipping To:</h3>
-            <div className="text-muted-foreground text-sm p-4 bg-muted/50 rounded-md space-y-1">
+            <div className="text-muted-foreground text-sm p-4 bg-muted/50 rounded-md space-y-1 border">
               <p className="font-medium">{orderDetails.shippingDetails.fullName}</p>
               <p>{orderDetails.shippingDetails.addressLine1}</p>
               {orderDetails.shippingDetails.addressLine2 && <p>{orderDetails.shippingDetails.addressLine2}</p>}
@@ -94,14 +96,25 @@ const OrderConfirmationPage = () => {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 pt-4 border-t flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span>${orderDetails.total.toFixed(2)}</span>
+            <div className="mt-4 pt-4 border-t space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="font-medium">${orderDetails.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Shipping:</span>
+                <span className="font-medium">${orderDetails.shippingCost.toFixed(2)}</span>
+              </div>
+              <hr className="my-1 border-border/40"/>
+              <div className="flex justify-between font-bold text-lg">
+                <span>Grand Total:</span>
+                <span>${orderDetails.grandTotal.toFixed(2)}</span>
+              </div>
             </div>
           </div>
           
           <p className="text-sm text-muted-foreground text-center">
-            You should receive an email confirmation shortly with your order details.
+            You should receive an email confirmation with your order details. If it doesn't arrive within a few minutes, please check your spam folder.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">

@@ -30,7 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import Image from 'next/image';
-import { Loader2, Edit, Package, User, Mail, MapPin, CalendarDays, DollarSign, FileEdit, CheckCircle, Truck, PackageCheck, XCircle } from 'lucide-react';
+import { Loader2, Edit, Package, User, Mail, MapPin, CalendarDays, DollarSign, FileEdit, CheckCircle, Truck, PackageCheck, XCircle, Receipt } from 'lucide-react';
 
 interface OrderDetailsDialogProps {
   order: Order | null;
@@ -117,8 +117,12 @@ const OrderDetailsDialog = ({ order, isOpen, onClose, onUpdateStatus, isUpdating
               <p className="text-sm p-3 bg-muted/50 rounded-md border">{format(new Date(order.orderDate), 'MMMM dd, yyyy HH:mm:ss')}</p>
             </div>
             <div>
-                <h3 className="text-lg font-semibold mb-2 font-headline flex items-center"><DollarSign className="mr-2 h-5 w-5 text-primary/80" />Total Amount</h3>
-                <p className="text-xl font-bold p-3 bg-muted/50 rounded-md border text-primary">${order.totalAmount.toFixed(2)}</p>
+                <h3 className="text-lg font-semibold mb-2 font-headline flex items-center"><Receipt className="mr-2 h-5 w-5 text-primary/80" />Cost Summary</h3>
+                <div className="text-sm p-3 bg-muted/50 rounded-md space-y-1 border">
+                    <p><strong className="font-medium">Subtotal:</strong> ${order.subtotal.toFixed(2)}</p>
+                    <p><strong className="font-medium">Shipping:</strong> ${order.shippingCost.toFixed(2)}</p>
+                    <p><strong className="font-medium text-primary">Grand Total:</strong> <span className="text-lg">${order.grandTotal.toFixed(2)}</span></p>
+                </div>
             </div>
           </div>
 

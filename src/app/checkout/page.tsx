@@ -1,3 +1,4 @@
+
 "use client";
 
 import CheckoutForm from '@/components/checkout/CheckoutForm';
@@ -8,13 +9,24 @@ import { useRouter } from 'next/navigation';
 import type { ShippingAddress } from '@/types';
 
 const CheckoutPage = () => {
-  const { cartItems, getCartTotal } = useCart();
+  const { cartItems, getCartSubtotal, getShippingCost, getGrandTotal } = useCart();
   const router = useRouter();
+
+  const subtotal = getCartSubtotal();
+  const shippingCost = getShippingCost();
+  const grandTotal = getGrandTotal();
 
   const handleOrderPlaced = (orderId: string, shippingDetails: ShippingAddress) => {
     // Store order details in session/local storage to display on confirmation page
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('lastOrder', JSON.stringify({ orderId, shippingDetails, items: cartItems, total: getCartTotal() }));
+      sessionStorage.setItem('lastOrder', JSON.stringify({ 
+        orderId, 
+        shippingDetails, 
+        items: cartItems, 
+        subtotal,
+        shippingCost,
+        grandTotal 
+      }));
     }
     router.push(`/order-confirmation/${orderId}`);
   };
@@ -32,7 +44,7 @@ const CheckoutPage = () => {
           </CardHeader>
           <CardContent>
             {cartItems.length > 0 ? (
-              <ul className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              <ul className="space-y-4 max-h-[calc(100vh-400px)] overflow-y-auto pr-2"> {/* Adjusted max-h */}
                 {cartItems.map(item => (
                   <li key={item.product.id} className="flex items-center space-x-3 border-b pb-3 last:border-b-0 last:pb-0">
                     <div className="relative h-16 w-16 rounded-md overflow-hidden">
@@ -49,10 +61,19 @@ const CheckoutPage = () => {
             ) : (
               <p className="text-muted-foreground">Your cart is empty.</p>
             )}
-            <div className="mt-6 pt-4 border-t">
+            <div className="mt-6 pt-4 border-t space-y-2">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal:</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Shipping:</span>
+                <span>${shippingCost.toFixed(2)}</span>
+              </div>
+              <hr className="my-1 border-border/40"/>
               <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span>${getCartTotal().toFixed(2)}</span>
+                <span>Grand Total:</span>
+                <span>${grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </CardContent>

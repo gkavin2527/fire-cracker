@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Loader2, AlertTriangle, ArrowLeft, Package, User, Mail, MapPin, CalendarDays, DollarSign, ListOrdered, ShoppingBag, XCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, Package, User, Mail, MapPin, CalendarDays, DollarSign, ListOrdered, ShoppingBag, XCircle, Truck, Receipt } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -200,11 +200,19 @@ const UserOrderDetailsPage = () => {
                   <p className="font-medium">{format(order.orderDate, 'MMMM dd, yyyy HH:mm')}</p>
                 </div>
               </div>
+               <div className="flex items-center">
+                  <Receipt className="mr-3 h-5 w-5 text-primary/80" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cost Breakdown</p>
+                    <p className="font-medium text-sm">Subtotal: ${order.subtotal.toFixed(2)}</p>
+                    <p className="font-medium text-sm">Shipping: ${order.shippingCost.toFixed(2)}</p>
+                  </div>
+              </div>
               <div className="flex items-center">
                 <DollarSign className="mr-3 h-5 w-5 text-primary/80" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Order Total</p>
-                  <p className="font-medium text-lg text-primary">${order.totalAmount.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">Grand Total</p>
+                  <p className="font-medium text-lg text-primary">${order.grandTotal.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -275,4 +283,3 @@ const UserOrderDetailsPage = () => {
 };
 
 export default UserOrderDetailsPage;
-

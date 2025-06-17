@@ -24,7 +24,9 @@ const OrderConfirmationEmailInputSchema = z.object({
     imageUrl: z.string().url().describe('URL of the product image.'),
     imageHint: z.string().optional().describe('Hint for AI if image is placeholder.'),
   })).min(1).describe('An array of items included in the order.'),
-  totalAmount: z.number().positive().describe('The total amount of the order.'),
+  subtotal: z.number().positive().describe('The subtotal amount for the items.'),
+  shippingCost: z.number().min(0).describe('The cost of shipping for the order.'),
+  grandTotal: z.number().positive().describe('The total amount of the order, including subtotal and shipping.'),
   shippingAddress: z.object({
     fullName: z.string().describe('Full name for shipping.'),
     addressLine1: z.string().describe('Primary line of the shipping address.'),
@@ -58,7 +60,9 @@ const prompt = ai.definePrompt({
     - Order ID: {{orderId}}
     - Customer Name: {{customerName}}
     - Customer Email: {{customerEmail}}
-    - Total Amount: \${{totalAmount}}
+    - Subtotal: \${{subtotal}}
+    - Shipping Cost: \${{shippingCost}}
+    - Grand Total: \${{grandTotal}}
 
     Shipping Address:
     - Name: {{shippingAddress.fullName}}
@@ -81,7 +85,7 @@ const prompt = ai.definePrompt({
             *   Order ID.
             *   Items purchased (name, quantity, price per item, total price for item line).
             *   You can display item images using a table or divs for layout. Use {{items.imageUrl}} for the image source. Ensure images are reasonably sized (e.g., width="80").
-            *   Subtotal, Shipping (if applicable, assume free for now unless specified otherwise), and Total Amount.
+            *   Subtotal, Shipping Cost, and Grand Total. Ensure this cost breakdown is clear.
         *   Display the shipping address clearly.
         *   Mention that they will receive another email when their order ships (if applicable).
         *   Include a closing, like "Thanks for shopping with us!" or "We appreciate your business!".
@@ -113,14 +117,16 @@ const orderConfirmationEmailFlow = ai.defineFlow(
     outputSchema: OrderConfirmationEmailOutputSchema,
   },
   async (input) => {
-    // Minor data transformation: ensure prices are formatted if needed by prompt
+    // Ensure prices are formatted to 2 decimal places for consistency
     const processedInput = {
         ...input,
         items: input.items.map(item => ({
             ...item,
-            price: parseFloat(item.price.toFixed(2)) // ensure 2 decimal places
+            price: parseFloat(item.price.toFixed(2)) 
         })),
-        totalAmount: parseFloat(input.totalAmount.toFixed(2))
+        subtotal: parseFloat(input.subtotal.toFixed(2)),
+        shippingCost: parseFloat(input.shippingCost.toFixed(2)),
+        grandTotal: parseFloat(input.grandTotal.toFixed(2))
     };
 
     const { output } = await prompt(processedInput);
