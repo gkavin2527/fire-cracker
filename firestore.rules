@@ -1,0 +1,37 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Categories: Public read, admin write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.token.email == "gkavin446@gmail.com";
+    }
+
+    // Products: Public read, admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.token.email == "gkavin446@gmail.com";
+    }
+
+    // Orders:
+    // - Authenticated users can create their own orders.
+    // - Authenticated users can read their own orders.
+    // - Admin can read, update, and delete any order.
+    match /orders/{orderId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (
+                    resource.data.userId == request.auth.uid ||  // User can read their own order
+                    request.auth.token.email == "gkavin446@gmail.com" // Admin can read any order
+                  );
+      allow update, delete: if request.auth != null && request.auth.token.email == "gkavin446@gmail.com";
+    }
+
+    // Example for a 'users' collection if you add user-specific data later
+    // match /users/{userId} {
+    //   allow read, write: if request.auth != null && request.auth.uid == userId;
+    // }
+  }
+}
