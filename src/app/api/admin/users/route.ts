@@ -9,9 +9,9 @@ import type { Timestamp } from 'firebase-admin/firestore'; // Use firebase-admin
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  if (!adminApp || !adminAuth || !adminDb) { // Check if admin SDK initialized
-    console.error("[API /admin/users] Firebase Admin SDK not initialized. Check server logs for firebaseAdmin.ts.");
-    return NextResponse.json({ error: 'Firebase Admin SDK not initialized. API unavailable.' }, { status: 500 });
+  if (!adminApp || !adminAuth || !adminDb) { 
+    console.error("[API /admin/users] CRITICAL: Firebase Admin SDK (adminApp, adminAuth, or adminDb) is not initialized. This usually means there's an issue in 'src/lib/firebaseAdmin.ts', likely with service account credentials. Check server startup logs for detailed errors from 'firebaseAdmin.ts'.");
+    return NextResponse.json({ error: 'Firebase Admin SDK not initialized. API unavailable. Please check server logs for details on the Admin SDK initialization failure.' }, { status: 500 });
   }
 
   const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
@@ -57,3 +57,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
   }
 }
+
