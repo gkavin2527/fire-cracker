@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             photoURL: currentUser.photoURL // ensure photo is saved/updated
            }, { merge: true });
         } catch (error) {
-          console.error("Error updating lastLoginAt on auth state change: ", error);
+          console.error("AuthContext: Error updating lastLoginAt on auth state change: ", error);
         }
       }
       setLoading(false);
@@ -51,10 +51,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (signedInUser && db) {
         const userDocRef = doc(db, 'users', signedInUser.uid);
         try {
-          // Set initial data or update last login
-          // Check if user document exists to set createdAt only once
-          // For simplicity here, we just ensure lastLoginAt is set/updated.
-          // Account page handles full profile creation if it doesn't exist.
           await setDoc(userDocRef, { 
             uid: signedInUser.uid,
             email: signedInUser.email,
@@ -63,14 +59,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             lastLoginAt: Timestamp.now() 
           }, { merge: true });
         } catch (error) {
-          console.error("Error updating user data on signInWithGoogle: ", error);
+          console.error("AuthContext: Error updating user data on signInWithGoogle Firestore write: ", error);
         }
       }
       toast({ title: "Signed in successfully!" });
       // onAuthStateChanged will handle setUser and setLoading(false)
-    } catch (error) {
-      console.error("Error signing in with Google: ", error);
-      toast({ title: "Sign in failed", description: "Could not sign in with Google.", variant: "destructive" });
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        console.warn(
+          "AuthContext: Google Sign-In popup was closed by the user or cancelled.",
+          "This is often due to the user intentionally closing the popup. However, if this happens unexpectedly, check:",
+          "\n1. Browser popup blockers (disable for this site).",
+          "\n2. Correct Firebase client configuration in .env.local (API Key, Auth Domain, Project ID).",
+          "\n3. 'Authorized domains' in your Firebase project settings (ensure your dev URL is listed).",
+          "\n4. Browser console for other errors (network issues, CSP, third-party cookie blocking in incognito)."
+        );
+        toast({
+          title: "Sign-in Cancelled",
+          description: "The sign-in popup was closed before completing.",
+          variant: "default", 
+        });
+      } else {
+        console.error("AuthContext: Error signing in with Google:", error);
+        toast({ title: "Sign in failed", description: "Could not sign in with Google. Please try again.", variant: "destructive" });
+      }
       setLoading(false); 
     }
   };
@@ -81,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await signOut(auth);
       toast({ title: "Signed out." });
     } catch (error) {
-      console.error("Error signing out: ", error);
+      console.error("AuthContext: Error signing out: ", error);
       toast({ title: "Sign out failed", variant: "destructive" });
     }
     // onAuthStateChanged will set user to null and setLoading to false
