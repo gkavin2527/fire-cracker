@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData, ProductFormData, Order, HeroImage, HeroImageFormData } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Product, Category, CategoryFormData, ProductFormData, Order, HeroImage, HeroImageFormData, UserProfile } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
   TableHeader,
@@ -13,7 +13,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X } from 'lucide-react';
+import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, UserCircle } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
@@ -30,11 +30,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 import { db } from '@/lib/firebase'; 
 import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore'; 
 import * as z from "zod";
 import { format } from 'date-fns';
 import Image from 'next/image'; // For displaying hero image previews
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 
 const ProductFormSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -66,15 +69,20 @@ const HeroImageFormSchema = z.object({
 
 
 export default function AdminPage() {
+  const { user: adminUser, loading: authLoading } = useAuth(); // Get current admin user
+  const { toast } = useToast();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); 
   const [orders, setOrders] = useState<Order[]>([]);
   const [heroImages, setHeroImages] = useState<HeroImage[]>([]);
+  const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
   
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); 
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
   const [isLoadingHeroImages, setIsLoadingHeroImages] = useState<boolean>(true);
+  const [isLoadingAdminUsers, setIsLoadingAdminUsers] = useState<boolean>(true);
 
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
@@ -84,8 +92,8 @@ export default function AdminPage() {
   const [categoryError, setCategoryError] = useState<string | null>(null); 
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [heroImageError, setHeroImageError] = useState<string | null>(null);
+  const [adminUsersError, setAdminUsersError] = useState<string | null>(null);
   
-  const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [heroImageToDelete, setHeroImageToDelete] = useState<HeroImage | null>(null);
@@ -176,7 +184,6 @@ export default function AdminPage() {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date(data.orderDate);
-        // Ensure all monetary values are numbers, defaulting to 0 if not present or invalid
         const subtotal = typeof data.subtotal === 'number' ? data.subtotal : 0;
         const shippingCost = typeof data.shippingCost === 'number' ? data.shippingCost : 0;
         const grandTotal = typeof data.grandTotal === 'number' ? data.grandTotal : 0;
@@ -221,12 +228,12 @@ export default function AdminPage() {
         const data = doc.data();
         const heroImage: HeroImage = {
             id: doc.id,
-            imageUrl: data.imageUrl || 'https://placehold.co/1200x400.png', // Default if missing
-            altText: data.altText || 'Default Alt Text', // Default
-            dataAiHint: data.dataAiHint || 'default hint', // Default
-            displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0, // Ensure number, default to 0
-            isActive: typeof data.isActive === 'boolean' ? data.isActive : true, // Ensure boolean, default to true
-            linkUrl: data.linkUrl || '', // Default to empty string
+            imageUrl: data.imageUrl || 'https://placehold.co/1200x400.png',
+            altText: data.altText || 'Default Alt Text',
+            dataAiHint: data.dataAiHint || 'default hint',
+            displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : 0,
+            isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+            linkUrl: data.linkUrl || '',
         };
         fetchedHeroImages.push(heroImage);
       });
@@ -250,13 +257,50 @@ export default function AdminPage() {
     }
   };
 
+  const fetchAdminUsers = async () => {
+    if (!adminUser) {
+      setAdminUsersError("Admin user not authenticated to fetch users.");
+      setIsLoadingAdminUsers(false);
+      return;
+    }
+    setIsLoadingAdminUsers(true);
+    setAdminUsersError(null);
+    try {
+      const token = await adminUser.getIdToken();
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to fetch users. Status: ${response.status}`);
+      }
+      const data: UserProfile[] = await response.json();
+      setAdminUsers(data);
+    } catch (e: any) {
+      console.error("Failed to fetch admin users:", e);
+      setAdminUsersError(e.message || "Could not load users.");
+      toast({
+        title: "Error Loading Users",
+        description: e.message || "An unexpected error occurred while fetching users.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAdminUsers(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchAdminProducts();
     fetchAdminCategories();
     fetchAdminOrders();
     fetchHeroImages();
-  }, []);
+    if (adminUser && !authLoading) { // Fetch users only if admin is loaded
+      fetchAdminUsers();
+    }
+  }, [adminUser, authLoading]); // Add adminUser and authLoading to dependency array
 
   const handleAddProduct = async (productDataFromForm: ProductFormData) => {
     setIsSubmittingProduct(true);
@@ -1104,19 +1148,61 @@ export default function AdminPage() {
         <Card className="shadow-md rounded-lg border-border/60">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-headline">
-              <Users className="mr-3 h-6 w-6 text-primary" /> User Management (Placeholder)
+              <Users className="mr-3 h-6 w-6 text-primary" /> User Management
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              This section will display user information once user roles and management features are implemented.
-            </p>
+            {authLoading || isLoadingAdminUsers ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-3 text-muted-foreground">Loading users...</p>
+              </div>
+            ) : adminUsersError ? (
+              <p className="text-destructive text-center py-10">Error: {adminUsersError}</p>
+            ) : adminUsers.length > 0 ? (
+              <div className="overflow-x-auto max-h-96">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Avatar</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Last Login</TableHead>
+                      <TableHead className="w-[80px] hidden sm:table-cell">UID</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {adminUsers.map((appUser) => (
+                      <TableRow key={appUser.uid}>
+                        <TableCell>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={appUser.photoURL || undefined} alt={appUser.displayName || "User"} />
+                            <AvatarFallback>
+                              {appUser.displayName ? appUser.displayName.charAt(0).toUpperCase() : <UserCircle className="h-5 w-5"/>}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell className="font-medium">{appUser.displayName || 'N/A'}</TableCell>
+                        <TableCell>{appUser.email || 'N/A'}</TableCell>
+                        <TableCell>
+                          {appUser.createdAt ? format(appUser.createdAt.toDate(), 'MMM dd, yyyy') : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {appUser.lastLoginAt ? format(appUser.lastLoginAt.toDate(), 'MMM dd, yyyy HH:mm') : 'N/A'}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs hidden sm:table-cell" title={appUser.uid}>{appUser.uid.substring(0,8)}...</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-10">No users found.</p>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
-
-    

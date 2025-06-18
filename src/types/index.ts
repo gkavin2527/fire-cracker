@@ -54,6 +54,10 @@ export interface UserProfile {
   displayName?: string | null; 
   photoURL?: string | null; 
   defaultShippingAddress?: ShippingAddress;
+  createdAt?: Timestamp;
+  lastLoginAt?: Timestamp;
+  // roles?: string[]; // Future: for more granular role-based access
+  // isAdmin?: boolean; // Future: for a dedicated admin flag in DB
 }
 
 export interface Order {

@@ -6,10 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-// Define the admin email address here
-// In a real app, this would come from a more secure configuration or user role system
-const ADMIN_EMAIL = "gkavin446@gmail.com";
+import { ADMIN_EMAIL } from '@/lib/constants'; // Import ADMIN_EMAIL
 
 interface ProtectedPageProps {
   children: ReactNode;

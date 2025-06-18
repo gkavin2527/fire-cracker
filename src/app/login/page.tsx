@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogIn } from 'lucide-react'; // Using LogIn icon
+import { ADMIN_EMAIL } from '@/lib/constants'; // Import ADMIN_EMAIL
 
 const LoginPage = () => {
   const { user, signInWithGoogle, loading } = useAuth();
@@ -14,11 +15,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      // If user is admin, redirect to /admin. Otherwise, redirect to homepage or a user dashboard.
-      // For now, all logged-in users are being pushed to /admin,
-      // and ProtectedPage will handle access denial for non-admins.
-      // This could be refined later if non-admins should go to a different default page.
-      router.push(user.email === "gkavin446@gmail.com" ? '/admin' : '/');
+      router.push(user.email === ADMIN_EMAIL ? '/admin' : '/');
     }
   }, [user, loading, router]);
 
@@ -58,4 +55,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

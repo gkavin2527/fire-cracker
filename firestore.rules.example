@@ -1,64 +1,92 @@
 
 rules_version = '2';
 
-// Helper function to check if the user is an admin
-// IMPORTANT: Replace 'YOUR_ADMIN_USER_UID_HERE' with your actual Firebase Admin User UID
+// Default deny all access unless explicitly allowed
+// function isAdmin() {
+//   // This is a placeholder. In a real app, you'd check a custom claim,
+//   // or a specific field in the user's profile document,
+//   // or a separate 'admins' collection.
+//   // For now, we'll hardcode an admin UID for demonstration.
+//   // REPLACE 'YOUR_ADMIN_USER_UID_HERE' with your actual admin user's UID.
+//   return request.auth != null && request.auth.uid == 'YOUR_ADMIN_USER_UID_HERE';
+// }
+
+// Helper function to check if the user is the admin based on UID
+// IMPORTANT: Replace 'YOUR_ADMIN_USER_UID_HERE' with the actual UID of your admin user.
 function isAdmin() {
-  return request.auth != null && request.auth.uid == 'YOUR_ADMIN_USER_UID_HERE';
+  return request.auth != null && request.auth.uid == 'gkOKq72gsgR0P0dYF3a3e5r21vD2'; // Example, replace!
 }
+
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Products:
-    // - Allow public read access for everyone.
-    // - Allow admin write access (create, update, delete).
+    // Products: Public read, admin write
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    match /products/{document=**} { // For listing
+        allow list: if true; // Anyone can list products
     }
 
-    // Categories:
-    // - Allow public read access for everyone.
-    // - Allow admin write access.
+    // Categories: Public read, admin write
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+     match /categories/{document=**} {
+        allow list: if true; // Anyone can list categories
     }
 
-    // Users:
-    // - Allow users to read and write their own profile data.
-    // - Admins can read any user profile (for management purposes).
-    // - Deny listing of all users for non-admins to protect privacy.
+    // Hero Images: Public read (for active images), admin write for all
+     match /heroImages/{imageId} {
+      allow read: if resource.data.isActive == true; // Public can read if active
+      allow get: if isAdmin(); // Admin can get any (even inactive)
+      allow list: if true; // Allow public listing but API should filter by isActive for homepage
+      allow create, update, delete: if isAdmin();
+    }
+
+
+    // User Profiles: Users can manage their own profile, admins can read all/manage all
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if isAdmin(); // Admins can read user profiles
-      // No allow list rule here for non-admins.
+      // Authenticated users can read and write their own profile data
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      // Authenticated users can create their own profile (e.g., on first sign-in)
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Admins can read any user's profile for management purposes
+      // and list all users for the admin dashboard.
+      // Update access for admins to other users' profiles can be added here
+      // if you implement role changing features.
+      allow get, list: if isAdmin();
+      // allow update: if isAdmin(); // Add this if admins need to modify other user profiles
     }
 
-    // Orders:
-    // - Allow users to create their own orders.
-    // - Allow users to read their own orders.
-    // - Allow admins to read and update any order (e.g., for status changes).
-    // - Deny listing of all orders for non-admins.
+    // Orders: Users can manage their own orders, admins can manage all orders
     match /orders/{orderId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow read, update: if isAdmin();
-      // No allow list rule here for non-admins.
+      // User who placed the order can read their own order
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // User can create their own order
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // User can update their own order (e.g., to cancel if status allows)
+      // Check if the update is only to 'status' and if user matches.
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId
+                      && request.resource.data.keys().hasOnly(['status']);
+
+
+      // Admin specific rules for orders
+      // Admins can read any order
+      allow get: if isAdmin(); // Renamed from 'read' to 'get' for specific doc access by admin
+      // Admins can update any order (e.g., change status)
+      allow update: if isAdmin(); // Admin can update any field
+      // Admins can list all orders
+      // The 'list' permission needs to be on the collection path for queries
+    }
+    // Allow admins to list all orders
+     match /orders/{document=**} {
+        allow list: if isAdmin();
     }
 
-    // Hero Images:
-    // - Allow public read access for everyone (e.g., for homepage carousel).
-    // - Allow admin write access (create, update, delete).
-    match /heroImages/{heroImageId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Deny all other unmatched paths by default.
-    match /{document=**} {
-      allow read, write: if false;
-    }
   }
 }

@@ -63,12 +63,14 @@ const AccountPage = () => {
         if (userDocSnap.exists()) {
           setUserProfile(userDocSnap.data() as UserProfile);
         } else {
-          // If no profile, create one with basic auth info
+          // If no profile, create one with basic auth info and timestamps
           const newUserProfile: UserProfile = {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
+            createdAt: Timestamp.now(),
+            lastLoginAt: Timestamp.now(),
           };
           await setDoc(userDocRef, newUserProfile);
           setUserProfile(newUserProfile);
@@ -93,7 +95,7 @@ const AccountPage = () => {
     } else if (!authLoading && !user) {
       setIsLoadingProfile(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, toast, form]);
 
 
   useEffect(() => {
@@ -234,6 +236,8 @@ const AccountPage = () => {
             <>
                 <p><strong className="font-medium">Name:</strong> {userProfile?.displayName || user.displayName || 'N/A'}</p>
                 <p><strong className="font-medium">Email:</strong> {userProfile?.email || user.email}</p>
+                {userProfile?.createdAt && <p><strong className="font-medium">Joined:</strong> {format(userProfile.createdAt.toDate(), 'MMM dd, yyyy')}</p>}
+                {userProfile?.lastLoginAt && <p><strong className="font-medium">Last Login:</strong> {format(userProfile.lastLoginAt.toDate(), 'MMM dd, yyyy HH:mm')}</p>}
             </>
             )}
           </CardContent>
@@ -349,4 +353,3 @@ const AccountPage = () => {
 };
 
 export default AccountPage;
-
