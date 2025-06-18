@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   if (!adminApp || !adminAuth || !adminDb) { 
-    console.error("[API /admin/users] CRITICAL: Firebase Admin SDK (adminApp, adminAuth, or adminDb) is not initialized. This usually means there's an issue in 'src/lib/firebaseAdmin.ts', likely with service account credentials. Check server startup logs for detailed errors from 'firebaseAdmin.ts'.");
+    const errorMessage = "[API /admin/users] CRITICAL: Firebase Admin SDK (adminApp, adminAuth, or adminDb) is not initialized. This usually means there's an issue in 'src/lib/firebaseAdmin.ts', likely with service account credentials or environment variable setup (FIREBASE_SERVICE_ACCOUNT_JSON_PATH or FIREBASE_SERVICE_ACCOUNT_JSON). The API cannot function without a properly initialized Admin SDK. Please check your SERVER STARTUP LOGS for detailed error messages from 'firebaseAdmin.ts' to diagnose the root cause of the Admin SDK initialization failure.";
+    console.error(errorMessage);
     return NextResponse.json({ error: 'Firebase Admin SDK not initialized. API unavailable. Please check server logs for details on the Admin SDK initialization failure.' }, { status: 500 });
   }
 
@@ -58,3 +59,4 @@ export async function GET(request: Request) {
   }
 }
 
+    
