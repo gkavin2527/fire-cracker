@@ -61,41 +61,70 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
       country: "",
     },
   });
+  
+  console.log('[CheckoutForm] Rendering. Auth loading:', authLoading, 'User present:', !!user, 'DB present:', !!db);
 
   useEffect(() => {
-    const fetchDefaultAddress = async () => {
-      if (user && db) {
+    console.log('[CheckoutForm] useEffect for default address triggered. Auth loading:', authLoading, 'User present:', !!user, 'DB present:', !!db);
+    
+    const fetchDefaultAddressAndPrefill = async () => {
+      if (user && db) { // If user is logged in and DB is available
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             const userProfile = userDocSnap.data() as UserProfile;
             if (userProfile.defaultShippingAddress) {
-              form.reset(userProfile.defaultShippingAddress);
-            } else if (user.email) { // Pre-fill email from auth if no default address
+              console.log('[CheckoutForm] Found default shipping address, resetting form:', userProfile.defaultShippingAddress);
+              form.reset(userProfile.defaultShippingAddress); // This will set all fields including email
+            } else if (user.email && !form.getValues().email) {
+              // No default address, but user has an email and form email is not yet set
+              console.log('[CheckoutForm] No default address, pre-filling email from auth:', user.email);
               form.setValue('email', user.email);
             }
-          } else if (user.email) { // Pre-fill email if no profile exists yet
+          } else if (user.email && !form.getValues().email) {
+            // No user profile document, but user has an email and form email is not yet set
+            console.log('[CheckoutForm] No user profile doc, pre-filling email from auth:', user.email);
             form.setValue('email', user.email);
           }
         } catch (error: any) {
-          console.error("Failed to fetch default shipping address:", error);
+          console.error("[CheckoutForm] Failed to fetch default shipping address:", error);
           if (error.code === 'permission-denied') {
             toast({
               title: "Address Loading Issue",
-              description: "Could not load your default address due to permissions. Your Firestore rules might need adjustment for reading user profiles.",
+              description: "Could not load your default address due to permissions. Firestore rules might need adjustment.",
               variant: "destructive",
               duration: 7000,
             });
+          } else {
+             toast({
+              title: "Address Loading Error",
+              description: "Could not load your default address. Please fill manually.",
+              variant: "destructive",
+              duration: 5000,
+            });
           }
         }
+      } else if (user && !db) { // User logged in, but DB not available
+        console.error("[CheckoutForm] Firestore 'db' is not available. Cannot fetch default address.");
+        toast({
+            title: "Database Connection Error",
+            description: "Cannot connect to the database to fetch your default address. Please try again later or fill manually.",
+            variant: "destructive",
+            duration: 7000,
+        });
+        if (user.email && !form.getValues().email) { // Still prefill email if possible
+             console.log('[CheckoutForm] DB unavailable, but pre-filling email from auth:', user.email);
+             form.setValue('email', user.email);
+        }
       }
+      // If user is not logged in (!user), the form will just use its default empty values after authLoading is false.
     };
 
-    if (!authLoading && user) {
-      fetchDefaultAddress();
+    if (!authLoading) { // Only proceed if authentication check is complete
+      fetchDefaultAddressAndPrefill();
     }
-  }, [user, authLoading, form, toast]);
+  }, [user, authLoading, form, toast, db]);
 
 
   async function onSubmit(values: CheckoutFormValues) {
@@ -392,3 +421,4 @@ const CheckoutForm = ({ onOrderPlaced }: CheckoutFormProps) => {
 };
 
 export default CheckoutForm;
+
