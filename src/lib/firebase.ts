@@ -37,14 +37,12 @@ const actualEnvVars: Record<string, string | undefined> = {};
 
 // Determine the console output function based on environment
 let consoleOutputFunction = console.error; // Default to error for server
-let hasLoggedClientWarning = false;
 
 if (typeof window !== 'undefined') { // Client-side
-  // Use a flag on the window object to ensure the warning is logged only once per client session
   if (!(window as any).__FIREBASE_CONFIG_WARNING_LOGGED__) {
-    (window as any).__FIREBASE_CONFIG_WARNING_LOGGED__ = true; // Set flag after first log
+    (window as any).__FIREBASE_CONFIG_WARNING_LOGGED__ = true;
   } else {
-    consoleOutputFunction = () => {}; // Suppress subsequent client-side logs for this specific warning
+    consoleOutputFunction = () => {};
   }
 }
 
@@ -73,20 +71,19 @@ if (!allKeysPresent) {
   const warningMessage =
     `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n` +
     `CRITICAL FIREBASE CONFIGURATION WARNING (src/lib/firebase.ts):\n` +
+    `>>> Firebase client-side SDK WILL NOT INITIALIZE OR WORK CORRECTLY. Expect 'auth/invalid-api-key', 'auth/unauthorized-domain', or popup errors. <<<\n\n` +
     `One or more Firebase environment variables are MISSING or UNDEFINED.\n` +
-    `Firebase WILL NOT WORK correctly and will likely throw an "auth/invalid-api-key" or "auth/unauthorized-domain" error.\n\n` +
-    `MISSING OR UNDEFINED VARIABLE(S) (checked via process.env.VAR_NAME):\n${missingKeys.map(k => `  - ${k} (Current value as seen by app: ${actualEnvVars[k]})`).join('\n')}\n\n` +
-    `This usually means your .env.local file is missing, incorrectly named, in the wrong directory (must be project root),\n` +
+    `This means your '.env.local' file is missing, incorrectly named, in the wrong directory (must be project root),\n` +
     `or does not contain all the correct environment variables with their values.\n\n` +
+    `MISSING OR UNDEFINED VARIABLE(S) (checked via process.env.VAR_NAME):\n${missingKeys.map(k => `  - ${k} (Current value as seen by app: ${actualEnvVars[k]})`).join('\n')}\n\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
     `ACTION REQUIRED:\n` +
     `1. Ensure you have a file named exactly '.env.local' in your project's ROOT directory.\n` +
     `2. Ensure this file contains ALL of the following lines, replacing placeholders\n` +
-    `   with your ACTUAL values from your Firebase project console (Project settings > General > Your apps > Config):\n\n` +
+    `   with your ACTUAL values from your Firebase project console (Project settings > General > Your apps > Config for project 'firecrackers-7d9a3'):\n\n` +
     `${envVarExamples.join('\n')}\n\n` +
     `3. IMPORTANT: You MUST RESTART your development server (e.g., stop it with Ctrl+C and run 'npm run dev' again)\n` +
     `   AFTER creating or modifying the .env.local file for changes to take effect.\n` +
-    `   These errors will persist if these variables are not correctly set and loaded.\n` +
     `--------------------------------------------------------------------------------------------------------\n` +
     `CURRENT VALUES ATTEMPTING TO BE USED BY THE APP (check for 'undefined' or incorrect values):\n`+
     `apiKey: ${firebaseConfigValues.apiKey}\n`+
@@ -113,29 +110,26 @@ const firebaseConfig = {
 const logConfig = (env: string) => {
   const intendedProjectId = 'firecrackers-7d9a3'; // The project ID the user states they are using
   console.log(
-    `%c[DIAGNOSTIC LOG] Firebase config loaded by app (src/lib/firebase.ts - ${env}):%c\n` +
-    `Attempted projectId: '${firebaseConfig.projectId}' (Is this '${intendedProjectId}'? If not, .env.local is wrong for this project!)\n` +
-    `Attempted authDomain: '${firebaseConfig.authDomain}'\n` +
-    `Full Config: ${JSON.stringify(firebaseConfig, null, 2)}\n` +
-    `%c>>> IMPORTANT FOR 'auth/unauthorized-domain' DEBUGGING <<<\n` +
-    `>>> Verify this 'projectId' and 'authDomain' MATCH your Firebase project ('${intendedProjectId}') settings where 'localhost' is authorized. <<<\n`+
-    `>>> If the 'Attempted projectId' above IS NOT '${intendedProjectId}', your .env.local file has the WRONG Firebase project credentials, or is not being loaded. <<<`,
-    'color: #FF4500; font-weight: bold; font-size: 1.1em;', // More prominent color
-    'color: inherit;', // Reset color for the rest of the message
+    `%c[DIAGNOSTIC LOG from src/lib/firebase.ts - ${env} Environment]%c\n` +
+    `Attempted projectId: '${firebaseConfig.projectId}' (Is this '${intendedProjectId}'? If NOT, your .env.local file has the WRONG Firebase project credentials, or is not being loaded by Next.js!)\n` +
+    `Attempted authDomain: '${firebaseConfig.authDomain}' (Should match project '${intendedProjectId}')\n` +
+    `Full Config Being Used: ${JSON.stringify(firebaseConfig, (key, value) => key === 'apiKey' ? '********' : value, 2)}\n` + // Mask API key in log
+    `%c>>> IMPORTANT FOR 'auth/unauthorized-domain' OR 'auth/popup-closed-by-user' DEBUGGING <<<\n` +
+    `>>> 1. Verify this 'projectId' and 'authDomain' EXACTLY MATCH your Firebase project ('${intendedProjectId}') settings where your development URL is authorized. <<<\n`+
+    `>>> 2. If 'Attempted projectId' above IS NOT '${intendedProjectId}', your .env.local file HAS THE WRONG Firebase project credentials, or is not being loaded by Next.js (RESTART SERVER). <<<\n` +
+    `>>> 3. Check your Firebase Console -> Authentication -> Settings -> Authorized Domains. Ensure your development URL ('${typeof window !== 'undefined' ? window.location.origin : 'your-dev-server-url'}') is listed. <<<`,
+    'color: #FF4500; font-weight: bold; font-size: 1.1em;',
+    'color: inherit;',
     'color: red; font-weight: bold;'
   );
 };
 
-let hasLoggedClientConfig = false;
 if (typeof window !== 'undefined') {
-  // Client-side: Log only once to avoid spamming if HMR or other re-renders occur for this specific log.
   if (!(window as any).__FIREBASE_CLIENT_CONFIG_DIAGNOSTIC_LOGGED__) {
     logConfig('Client');
     (window as any).__FIREBASE_CLIENT_CONFIG_DIAGNOSTIC_LOGGED__ = true;
-    hasLoggedClientConfig = true;
   }
 } else {
-  // Server-side: Log every time the module is initialized (typically once per server start/restart)
   logConfig('Server');
 }
 
@@ -164,8 +158,7 @@ if (!getApps().length) {
           "is likely an empty string ''. Ensure all NEXT_PUBLIC_FIREBASE_... variables in .env.local have actual values."
         );
     }
-    // If initialization fails, ensure 'app' is at least a dummy object to prevent further errors if accessed.
-    if (!getApps().length) { // Check again in case some partial initialization occurred
+    if (!getApps().length) {
         criticalErrorLogger("CRITICAL: Firebase app failed to initialize and no app instance exists after attempt.");
         app = {name: '[failed-initialization]', options: {}, automaticDataCollectionEnabled: false} as FirebaseApp;
     } else {
@@ -176,16 +169,15 @@ if (!getApps().length) {
   app = getApps()[0];
 }
 
-const auth = getAuth(app); // This might throw if app is the dummy object and strict checks are in place internally.
+const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 try {
-    // Only try to get Firestore if the app object looks somewhat valid (not the dummy one)
     if (app && app.name !== '[failed-initialization]') {
         db = getFirestore(app);
     } else {
-        db = null; // Explicitly set to null if app initialization failed
-        if (app.name === '[failed-initialization]') { // Only log this specific message if we used the dummy app
+        db = null; 
+        if (app.name === '[failed-initialization]') {
           console.error("Firestore NOT initialized because Firebase app initialization failed catastrophically.");
         }
     }

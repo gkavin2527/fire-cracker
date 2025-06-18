@@ -30,9 +30,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           await setDoc(userDocRef, { 
             lastLoginAt: Timestamp.now(),
-            email: currentUser.email, // ensure email is saved/updated
-            displayName: currentUser.displayName, // ensure name is saved/updated
-            photoURL: currentUser.photoURL // ensure photo is saved/updated
+            email: currentUser.email, 
+            displayName: currentUser.displayName, 
+            photoURL: currentUser.photoURL 
            }, { merge: true });
         } catch (error) {
           console.error("AuthContext: Error updating lastLoginAt on auth state change: ", error);
@@ -45,6 +45,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     setLoading(true);
+    console.log("[AuthContext] Attempting signInWithGoogle. Auth object available:", auth);
+    if (!auth || !auth.app) {
+        console.error("[AuthContext] CRITICAL: Firebase Auth object or auth.app is not available or not correctly initialized. This indicates a problem with Firebase setup in 'src/lib/firebase.ts'. Check console for errors from that file.");
+        toast({
+            title: "Firebase Configuration Error",
+            description: "Firebase is not properly configured. Please check console logs for details from 'src/lib/firebase.ts' and ensure your .env.local file is correct. Admin may need to restart the server.",
+            variant: "destructive",
+            duration: 9000,
+        });
+        setLoading(false);
+        return;
+    }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const signedInUser = result.user;
@@ -63,25 +75,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       toast({ title: "Signed in successfully!" });
-      // onAuthStateChanged will handle setUser and setLoading(false)
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         console.warn(
-          "AuthContext: Google Sign-In popup was closed by the user or cancelled.",
-          "This is often due to the user intentionally closing the popup. However, if this happens unexpectedly, check:",
-          "\n1. Browser popup blockers (disable for this site).",
-          "\n2. Correct Firebase client configuration in .env.local (API Key, Auth Domain, Project ID).",
-          "\n3. 'Authorized domains' in your Firebase project settings (ensure your dev URL is listed).",
-          "\n4. Browser console for other errors (network issues, CSP, third-party cookie blocking in incognito)."
+          "[AuthContext] Google Sign-In popup was closed by the user or cancelled.",
+          "Common causes if unintentional:",
+          "\n1. Firebase Client Config: Ensure '.env.local' has correct NEXT_PUBLIC_FIREBASE_... variables and server was restarted.",
+          "\n2. Authorized Domains: Check Firebase Console > Authentication > Settings > Authorized domains. Your dev URL must be listed.",
+          "\n3. Browser Popups/Cookies: Disable popup blockers for this site. Check third-party cookie settings, especially in incognito.",
+          "\n4. Console Errors: Look for other Firebase errors in the browser console that might precede this one.",
+          "\nError object:", error
         );
         toast({
           title: "Sign-in Cancelled",
-          description: "The sign-in popup was closed before completing.",
+          description: "The sign-in popup was closed before completing. Check browser console for more details if this was unexpected.",
           variant: "default", 
+          duration: 7000,
         });
       } else {
-        console.error("AuthContext: Error signing in with Google:", error);
-        toast({ title: "Sign in failed", description: "Could not sign in with Google. Please try again.", variant: "destructive" });
+        console.error("[AuthContext] Error signing in with Google: ", error);
+        toast({ title: "Sign in failed", description: `Could not sign in with Google. Error: ${error.message || 'Unknown error'}. Please try again.`, variant: "destructive" });
       }
       setLoading(false); 
     }
@@ -96,7 +109,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("AuthContext: Error signing out: ", error);
       toast({ title: "Sign out failed", variant: "destructive" });
     }
-    // onAuthStateChanged will set user to null and setLoading to false
   };
 
   return (
@@ -113,3 +125,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
