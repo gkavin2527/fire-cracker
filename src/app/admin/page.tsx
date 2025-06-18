@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { Product, Category, CategoryFormData, ProductFormData, Order, HeroImage, HeroImageFormData, UserProfile } from '@/types';
+import type { Product, Category, CategoryFormData, ProductFormData, Order, HeroImage, HeroImageFormData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -13,7 +13,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, Users, ShoppingBag, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, UserCircle } from 'lucide-react';
+import { Package, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, ShoppingBag } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
@@ -30,13 +30,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+// UserProfile and Users icon are no longer needed as user management is removed
+// import type { UserProfile } from '@/types';
+// import { Users, UserCircle } from 'lucide-react';
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { db } from '@/lib/firebase'; 
 import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore'; 
 import * as z from "zod";
 import { format } from 'date-fns';
-import Image from 'next/image'; // For displaying hero image previews
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from 'next/image';
 
 
 const ProductFormSchema = z.object({
@@ -69,20 +71,19 @@ const HeroImageFormSchema = z.object({
 
 
 export default function AdminPage() {
-  const { user: adminUser, loading: authLoading } = useAuth(); // Get current admin user
   const { toast } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]); 
   const [orders, setOrders] = useState<Order[]>([]);
   const [heroImages, setHeroImages] = useState<HeroImage[]>([]);
-  const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
+  // const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]); // Removed User Management
   
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true); 
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(true);
   const [isLoadingHeroImages, setIsLoadingHeroImages] = useState<boolean>(true);
-  const [isLoadingAdminUsers, setIsLoadingAdminUsers] = useState<boolean>(true);
+  // const [isLoadingAdminUsers, setIsLoadingAdminUsers] = useState<boolean>(true); // Removed User Management
 
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
@@ -92,7 +93,7 @@ export default function AdminPage() {
   const [categoryError, setCategoryError] = useState<string | null>(null); 
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [heroImageError, setHeroImageError] = useState<string | null>(null);
-  const [adminUsersError, setAdminUsersError] = useState<string | null>(null);
+  // const [adminUsersError, setAdminUsersError] = useState<string | null>(null); // Removed User Management
   
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -203,6 +204,8 @@ export default function AdminPage() {
       let errorMessage = e.message || "Failed to load orders.";
        if (e.code === 'permission-denied') {
         errorMessage = "Permission denied. Check Firestore security rules for 'orders' collection (admin read access).";
+      } else if (e.code === 'failed-precondition' && e.message.toLowerCase().includes('index')) {
+        errorMessage = "Database index missing for orders. Please create an index on 'orderDate' (DESC) in the 'orders' collection."
       }
       setOrdersError(errorMessage);
       toast({
@@ -257,50 +260,15 @@ export default function AdminPage() {
     }
   };
 
-  const fetchAdminUsers = async () => {
-    if (!adminUser) {
-      setAdminUsersError("Admin user not authenticated to fetch users.");
-      setIsLoadingAdminUsers(false);
-      return;
-    }
-    setIsLoadingAdminUsers(true);
-    setAdminUsersError(null);
-    try {
-      const token = await adminUser.getIdToken();
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to fetch users. Status: ${response.status}`);
-      }
-      const data: UserProfile[] = await response.json();
-      setAdminUsers(data);
-    } catch (e: any) {
-      console.error("Failed to fetch admin users:", e);
-      setAdminUsersError(e.message || "Could not load users.");
-      toast({
-        title: "Error Loading Users",
-        description: e.message || "An unexpected error occurred while fetching users.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingAdminUsers(false);
-    }
-  };
-
-
+  // Removed fetchAdminUsers function
+  
   useEffect(() => {
     fetchAdminProducts();
     fetchAdminCategories();
     fetchAdminOrders();
     fetchHeroImages();
-    if (adminUser && !authLoading) { // Fetch users only if admin is loaded
-      fetchAdminUsers();
-    }
-  }, [adminUser, authLoading]); // Add adminUser and authLoading to dependency array
+    // Removed call to fetchAdminUsers
+  }, []);
 
   const handleAddProduct = async (productDataFromForm: ProductFormData) => {
     setIsSubmittingProduct(true);
@@ -1088,121 +1056,65 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-         <Card className="shadow-md rounded-lg border-border/60">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl font-headline">
-              <ShoppingBag className="mr-3 h-6 w-6 text-primary" /> Order Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingOrders ? (
-              <div className="flex justify-center items-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Loading orders...</p>
-              </div>
-            ) : ordersError ? (
-              <p className="text-destructive text-center py-10">Error: {ordersError}</p>
-            ) : orders.length > 0 ? (
-              <div className="overflow-x-auto max-h-96">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[150px]">Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+      <Card className="shadow-md rounded-lg border-border/60"> {/* Single card for Order Management */}
+        <CardHeader>
+          <CardTitle className="flex items-center text-xl font-headline">
+            <ShoppingBag className="mr-3 h-6 w-6 text-primary" /> Order Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingOrders ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-3 text-muted-foreground">Loading orders...</p>
+            </div>
+          ) : ordersError ? (
+            <p className="text-destructive text-center py-10">Error: {ordersError}</p>
+          ) : orders.length > 0 ? (
+            <div className="overflow-x-auto max-h-96">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">Order ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-mono text-xs">{order.id}</TableCell>
+                      <TableCell className="font-medium">{order.shippingAddress.fullName}</TableCell>
+                      <TableCell>{format(new Date(order.orderDate), 'MMM dd, yyyy HH:mm')}</TableCell>
+                      <TableCell className="text-right">₹{(order.grandTotal ?? 0).toFixed(2)}</TableCell>
+                      <TableCell>{order.status}</TableCell>
+                      <TableCell className="text-right space-x-1">
+                         <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10" 
+                            aria-label={`View order ${order.id}`}
+                            onClick={() => openOrderDetails(order)}
+                          >
+                            <ListOrdered className="h-4 w-4" />
+                          </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-mono text-xs">{order.id}</TableCell>
-                        <TableCell className="font-medium">{order.shippingAddress.fullName}</TableCell>
-                        <TableCell>{format(new Date(order.orderDate), 'MMM dd, yyyy HH:mm')}</TableCell>
-                        <TableCell className="text-right">₹{(order.grandTotal ?? 0).toFixed(2)}</TableCell>
-                        <TableCell>{order.status}</TableCell>
-                        <TableCell className="text-right space-x-1">
-                           <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-muted-foreground hover:text-primary/80 hover:bg-primary/10" 
-                              aria-label={`View order ${order.id}`}
-                              onClick={() => openOrderDetails(order)}
-                            >
-                              <ListOrdered className="h-4 w-4" />
-                            </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-10">No orders found.</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="shadow-md rounded-lg border-border/60">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl font-headline">
-              <Users className="mr-3 h-6 w-6 text-primary" /> User Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {authLoading || isLoadingAdminUsers ? (
-              <div className="flex justify-center items-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Loading users...</p>
-              </div>
-            ) : adminUsersError ? (
-              <p className="text-destructive text-center py-10">Error: {adminUsersError}</p>
-            ) : adminUsers.length > 0 ? (
-              <div className="overflow-x-auto max-h-96">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Avatar</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead>Last Login</TableHead>
-                      <TableHead className="w-[80px] hidden sm:table-cell">UID</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adminUsers.map((appUser) => (
-                      <TableRow key={appUser.uid}>
-                        <TableCell>
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={appUser.photoURL || undefined} alt={appUser.displayName || "User"} />
-                            <AvatarFallback>
-                              {appUser.displayName ? appUser.displayName.charAt(0).toUpperCase() : <UserCircle className="h-5 w-5"/>}
-                            </AvatarFallback>
-                          </Avatar>
-                        </TableCell>
-                        <TableCell className="font-medium">{appUser.displayName || 'N/A'}</TableCell>
-                        <TableCell>{appUser.email || 'N/A'}</TableCell>
-                        <TableCell>
-                          {appUser.createdAt ? format(appUser.createdAt.toDate(), 'MMM dd, yyyy') : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {appUser.lastLoginAt ? format(appUser.lastLoginAt.toDate(), 'MMM dd, yyyy HH:mm') : 'N/A'}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs hidden sm:table-cell" title={appUser.uid}>{appUser.uid.substring(0,8)}...</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-10">No users found.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-10">No orders found.</p>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Removed User Management Card */}
+
     </div>
   );
 }
