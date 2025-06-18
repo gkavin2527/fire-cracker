@@ -44,4 +44,7 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 
-firecrackers-7d9a3-firebase-adminsdk-fbsvc-942db97592.json
+firecrackers-7d9a3-firebase-adminsdk-fbsvc-942db97592.jsonfirebase-service-account.json
+*.key
+*.pem
+.env*
