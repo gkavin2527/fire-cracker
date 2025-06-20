@@ -95,7 +95,7 @@ const AccountPage = () => {
     } else if (!authLoading && !user) {
       setIsLoadingProfile(false);
     }
-  }, [user, authLoading, toast, form]);
+  }, [user, authLoading, toast]);
 
 
   useEffect(() => {
