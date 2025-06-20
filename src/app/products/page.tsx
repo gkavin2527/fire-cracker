@@ -1,8 +1,8 @@
 
-"use client";
+"use client"; // This directive now applies to ProductsPageClientContent
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react'; // Added Suspense
 import ProductCard from '@/components/products/ProductCard';
 import type { Product, Category } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ListFilter, Search, Loader2 } from 'lucide-react';
 
-const ProductsPage = () => {
+// Renamed component that contains the client-side logic
+function ProductsPageClientContent() {
+  // "use client"; // This is effectively handled by the file-level directive if this was the only component.
+                  // However, for clarity if this component were in its own file, it would have "use client".
+
   const searchParams = useSearchParams();
   const initialCategorySlug = searchParams.get('category');
 
@@ -263,5 +267,17 @@ const ProductsPage = () => {
   );
 };
 
-export default ProductsPage;
-
+// The default export is now a new component that wraps ProductsPageClientContent
+export default function ProductsPage() {
+  // This component does NOT use "use client"
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[calc(100vh-300px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-muted-foreground text-lg">Loading products...</p>
+      </div>
+    }>
+      <ProductsPageClientContent />
+    </Suspense>
+  );
+}

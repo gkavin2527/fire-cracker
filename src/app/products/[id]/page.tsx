@@ -12,6 +12,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
 
 async function getProduct(id: string): Promise<Product | null> {
   try {
+    console.log("Ganesan: ",APP_URL)
     const res = await fetch(`${APP_URL}/api/products/${id}`, { cache: 'no-store' });
     if (!res.ok) {
       if (res.status === 404) return null; // Product not found
