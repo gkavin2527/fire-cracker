@@ -13,12 +13,13 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, ShoppingBag } from 'lucide-react';
+import { Package, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, ShoppingBag, PackagePlus } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
+import BulkAddProductForm from '@/components/admin/BulkAddProductForm';
 import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 // import { Users, UserCircle } from 'lucide-react';
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { db } from '@/lib/firebase'; 
-import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore'; 
+import { collection, addDoc, getDocs, query, orderBy, doc, deleteDoc, updateDoc, Timestamp, writeBatch } from 'firebase/firestore'; 
 import * as z from "zod";
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -88,6 +89,7 @@ export default function AdminPage() {
   const [isSubmittingProduct, setIsSubmittingProduct] = useState<boolean>(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState<boolean>(false); 
   const [isSubmittingHeroImage, setIsSubmittingHeroImage] = useState<boolean>(false);
+  const [isSubmittingBulkProducts, setIsSubmittingBulkProducts] = useState<boolean>(false);
   
   const [productError, setProductError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null); 
@@ -107,6 +109,8 @@ export default function AdminPage() {
 
   const [editingHeroImage, setEditingHeroImage] = useState<HeroImage | null>(null);
   const [isHeroImageFormOpen, setIsHeroImageFormOpen] = useState(false);
+
+  const [isBulkProductFormOpen, setIsBulkProductFormOpen] = useState(false);
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailsDialogOpen, setIsOrderDetailsDialogOpen] = useState(false);
@@ -222,7 +226,7 @@ export default function AdminPage() {
     setIsLoadingHeroImages(true);
     setHeroImageError(null);
     try {
-      if (!db) throw new Error("Firestore database is not initialized.");
+      if (!db) throw new Error("Firestore database not initialized.");
       const heroImagesCollectionRef = collection(db, 'heroImages');
       const q = query(heroImagesCollectionRef, orderBy('displayOrder', 'asc'));
       const querySnapshot = await getDocs(q);
@@ -500,6 +504,71 @@ export default function AdminPage() {
     setIsCategoryFormOpen(true);
   };
 
+  const handleBulkAddProducts = async (productsJson: string) => {
+    setIsSubmittingBulkProducts(true);
+    try {
+        let productsData;
+        try {
+            productsData = JSON.parse(productsJson);
+        } catch (e) {
+            throw new Error("Invalid JSON format. Please check for syntax errors like trailing commas.");
+        }
+
+        const productArraySchema = z.array(ProductFormSchema);
+        const validation = productArraySchema.safeParse(productsData);
+
+        if (!validation.success) {
+            const errorMessages = validation.error.issues.map(issue => `Item at index ${issue.path[0]}: ${issue.message} on field '${issue.path[1]}'`).join('; ');
+            throw new Error(`Validation failed: ${errorMessages}`);
+        }
+
+        const validatedProducts = validation.data;
+        if (validatedProducts.length === 0) {
+            throw new Error("Cannot add an empty list of products.");
+        }
+        if (validatedProducts.length > 50) { // Add a reasonable limit for a single batch
+            throw new Error("Bulk add is limited to 50 products at a time.");
+        }
+        if (!db) {
+            throw new Error("Firestore database is not initialized.");
+        }
+
+        const batch = writeBatch(db);
+        const productsCollectionRef = collection(db, 'products');
+
+        validatedProducts.forEach(productData => {
+            const newProductData: ProductFormData & { rating?: number } = {
+                ...productData,
+                imageUrl: productData.imageUrl || `https://placehold.co/400x300.png`,
+                imageHint: productData.imageHint || productData.name.split(' ').slice(0, 2).join(' ').toLowerCase() || 'product image',
+                stock: productData.stock ?? 0,
+            };
+            const newProductRef = doc(productsCollectionRef); // Create a new doc with a generated ID
+            batch.set(newProductRef, newProductData);
+        });
+
+        await batch.commit();
+
+        toast({
+            title: "Bulk Add Successful!",
+            description: `${validatedProducts.length} products have been successfully added.`,
+        });
+        setIsBulkProductFormOpen(false);
+        fetchAdminProducts();
+        return true;
+    } catch (e: any) {
+        console.error('Failed to bulk add products:', e);
+        toast({
+            title: "Error Bulk Adding Products",
+            description: e.message || "An unknown error occurred.",
+            variant: "destructive",
+            duration: 9000,
+        });
+        return false;
+    } finally {
+        setIsSubmittingBulkProducts(false);
+    }
+  };
 
   const handleDeleteProduct = async () => {
     if (!productToDelete || !db) {
@@ -817,6 +886,26 @@ export default function AdminPage() {
                 initialData={editingCategory ? { name: editingCategory.name, slug: editingCategory.slug, imageUrl: editingCategory.imageUrl, imageHint: editingCategory.imageHint, displayOrder: editingCategory.displayOrder } : undefined}
                 isEditing={!!editingCategory}
               />
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={isBulkProductFormOpen} onOpenChange={setIsBulkProductFormOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" onClick={() => setIsBulkProductFormOpen(true)}>
+                    <PackagePlus className="mr-2 h-5 w-5" /> Bulk Add Products
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px]">
+                <DialogHeader>
+                    <DialogTitle className="font-headline text-2xl">Bulk Add Products</DialogTitle>
+                    <DialogDescription>
+                        Paste a JSON array of products to add multiple items at once.
+                    </DialogDescription>
+                </DialogHeader>
+                <BulkAddProductForm
+                    onSubmit={handleBulkAddProducts}
+                    isSubmitting={isSubmittingBulkProducts}
+                />
             </DialogContent>
           </Dialog>
 
