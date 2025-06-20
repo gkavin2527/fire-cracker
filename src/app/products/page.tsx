@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 // This component is now a Server Component.
 // It does NOT use "use client".
 export default function ProductsPage() {
+  // console.log("Rendering ProductsPage (Server Component)"); // For build-time/SSR logging
   return (
     <Suspense fallback={
       <div className="flex justify-center items-center min-h-[calc(100vh-300px)]">
@@ -17,3 +18,4 @@ export default function ProductsPage() {
     </Suspense>
   );
 }
+
