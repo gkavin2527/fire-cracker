@@ -7,6 +7,8 @@ import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { ShoppingCart, Star } from 'lucide-react';
 
 interface ProductCardProps {
@@ -15,6 +17,16 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
+  const { user } = useAuth(); // Get user from AuthContext
+  const router = useRouter(); // Get router instance
+
+  const handleAddToCart = () => {
+    if (!user) {
+      router.push('/login'); // Redirect to login if not authenticated
+    } else {
+      addToCart(product);
+    }
+  };
 
   return (
     <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full rounded-lg border border-border/60">
@@ -48,12 +60,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button 
-          onClick={() => addToCart(product)} 
+        <Button
+          onClick={handleAddToCart}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           aria-label={`Add ${product.name} to cart`}
+          disabled={product.stock === 0 && !!user} // Keep disabled if out of stock and user is logged in
         >
-          <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
+          <ShoppingCart className="mr-2 h-5 w-5" />
+          {product.stock === 0 && !!user ? 'Out of Stock' : 'Add to Cart'}
         </Button>
       </CardFooter>
     </Card>
@@ -61,4 +75,3 @@ const ProductCard = ({ product }: ProductCardProps) => {
 };
 
 export default ProductCard;
-
