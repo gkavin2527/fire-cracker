@@ -13,11 +13,12 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Package, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, ShoppingBag } from 'lucide-react';
+import { Package, PlusCircle, Loader2, LayoutGrid, Trash2, Edit3, ListOrdered, Image as ImageIcon, Check, X, ShoppingBag, UploadCloud } from 'lucide-react';
 import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
 import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
+import { MediaUploader } from '@/components/admin/MediaUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -841,6 +842,8 @@ export default function AdminPage() {
         </div>
       </div>
       
+      <MediaUploader />
+
       {/* Hero Image Management Card */}
       <Card className="shadow-md rounded-lg border-border/60">
           <CardHeader>

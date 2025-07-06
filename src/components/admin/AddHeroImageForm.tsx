@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +18,6 @@ import { Switch } from "@/components/ui/switch";
 import type { HeroImageFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import { ImageUploader } from "./ImageUploader";
 
 const heroImageFormSchema = z.object({
   imageUrl: z.string().url({ message: "An image URL is required." }).min(1, { message: "An image URL is required." }),
@@ -94,20 +94,12 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Hero Image</FormLabel>
+              <FormLabel>Hero Image URL</FormLabel>
               <FormControl>
-                <div>
-                  <ImageUploader 
-                    onUploadComplete={(url) => {
-                      form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
-                    }}
-                  />
-                  <Input 
-                    {...field}
-                    placeholder="Upload an image above, or paste a URL here."
-                    className="mt-2"
-                  />
-                </div>
+                <Input 
+                  {...field}
+                  placeholder="Upload image above and paste URL here"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

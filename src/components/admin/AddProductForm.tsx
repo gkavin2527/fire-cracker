@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +20,6 @@ import type { Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ImageUploader } from "./ImageUploader";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -152,20 +152,12 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Image</FormLabel>
+              <FormLabel>Product Image URL</FormLabel>
               <FormControl>
-                <div>
-                  <ImageUploader 
-                    onUploadComplete={(url) => {
-                      form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
-                    }}
-                  />
-                  <Input 
+                 <Input 
                     {...field}
-                    placeholder="Upload an image above, or paste a URL here."
-                    className="mt-2"
+                    placeholder="Upload image above and paste URL here"
                   />
-                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

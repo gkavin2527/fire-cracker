@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import { ImageUploader } from "./ImageUploader";
 
 const generateSlug = (name: string) => {
   return name
@@ -135,20 +135,12 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category Image</FormLabel>
+              <FormLabel>Category Image URL</FormLabel>
               <FormControl>
-                <div>
-                  <ImageUploader 
-                    onUploadComplete={(url) => {
-                      form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
-                    }}
-                  />
-                  <Input 
+                 <Input 
                     {...field}
-                    placeholder="Upload an image above, or paste a URL here."
-                    className="mt-2"
+                    placeholder="Upload image above and paste URL here"
                   />
-                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
