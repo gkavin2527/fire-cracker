@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,8 +16,6 @@ import { Input } from "@/components/ui/input";
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import ImageUploader from "./ImageUploader";
-import Image from "next/image";
 
 const generateSlug = (name: string) => {
   return name
@@ -34,7 +31,7 @@ const categoryFormSchema = z.object({
   name: z.string().min(3, { message: "Category name must be at least 3 characters." }),
   slug: z.string().min(3, { message: "Slug must be at least 3 characters." })
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with dashes, e.g., 'sky-shots'."),
-  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
+  imageUrl: z.string().url({ message: "An image URL is required." }).min(1, { message: "An image URL is required." }),
   imageHint: z.string().min(1, "Image hint is required.").max(50, "Image hint should be brief, max 50 chars."),
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
@@ -108,31 +105,6 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
         <FormField
           control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category Image</FormLabel>
-              {field.value && (
-                <div className="relative w-full h-40 mt-2">
-                  <Image src={field.value} alt="Category preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
-                </div>
-              )}
-              <FormControl>
-                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
-              </FormControl>
-              <ImageUploader 
-                folder="categories"
-                onUploadSuccess={(url) => {
-                  form.setValue('imageUrl', url, { shouldValidate: true });
-                }}
-                isSubmitting={isSubmitting}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
@@ -152,6 +124,19 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
               <FormLabel>Slug (URL-friendly name)</FormLabel>
               <FormControl>
                 <Input placeholder="e.g., sky-shots" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category Image URL</FormLabel>
+              <FormControl>
+                 <Input placeholder="https://example.com/image.png" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

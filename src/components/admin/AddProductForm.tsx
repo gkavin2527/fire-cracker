@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,15 +19,13 @@ import type { Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import ImageUploader from "./ImageUploader";
-import Image from "next/image";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   price: z.coerce.number().positive({ message: "Price must be a positive number." }),
   category: z.string().min(1, { message: "Please select a category." }),
-  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
+  imageUrl: z.string().url({ message: "Please enter a valid image URL." }).min(1, { message: "An image URL is required." }),
   imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(),
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
@@ -125,32 +122,6 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
         <FormField
           control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Product Image</FormLabel>
-              {field.value && (
-                <div className="relative w-full h-40 mt-2">
-                  <Image src={field.value} alt="Product preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
-                </div>
-              )}
-              <FormControl>
-                {/* This input is now for display. The uploader handles getting the URL. */}
-                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
-              </FormControl>
-              <ImageUploader 
-                folder="products"
-                onUploadSuccess={(url) => {
-                  form.setValue('imageUrl', url, { shouldValidate: true });
-                }}
-                isSubmitting={isSubmitting}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
@@ -170,6 +141,19 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
               <FormLabel>Description</FormLabel>
               <FormControl>
                 <Textarea placeholder="Describe the product..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Product Image URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com/image.png" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,11 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import type { HeroImageFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import ImageUploader from "./ImageUploader";
-import Image from "next/image";
 
 const heroImageFormSchema = z.object({
-  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
+  imageUrl: z.string().url({ message: "An image URL is required." }).min(1, { message: "An image URL is required." }),
   altText: z.string().min(3, { message: "Alt text must be at least 3 characters." }),
   dataAiHint: z.string().min(1, "AI hint is required.").max(50, "AI hint should be brief, max 50 chars."),
   displayOrder: z.coerce.number().int().min(0, { message: "Display order must be a non-negative integer." }),
@@ -96,22 +93,10 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Hero Image</FormLabel>
-               {field.value && (
-                <div className="relative w-full h-40 mt-2">
-                  <Image src={field.value} alt="Hero image preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
-                </div>
-              )}
+              <FormLabel>Hero Image URL</FormLabel>
               <FormControl>
-                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
+                <Input placeholder="https://example.com/image.png" {...field} />
               </FormControl>
-              <ImageUploader 
-                folder="hero-images"
-                onUploadSuccess={(url) => {
-                  form.setValue('imageUrl', url, { shouldValidate: true });
-                }}
-                isSubmitting={isSubmitting}
-              />
               <FormMessage />
             </FormItem>
           )}
