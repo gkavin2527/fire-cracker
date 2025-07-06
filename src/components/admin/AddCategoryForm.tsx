@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import { ImageUploader } from "./ImageUploader";
 
 const generateSlug = (name: string) => {
   return name
@@ -134,9 +135,20 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category Image URL</FormLabel>
+              <FormLabel>Category Image</FormLabel>
               <FormControl>
-                 <Input placeholder="https://example.com/image.png" {...field} />
+                <>
+                  <ImageUploader 
+                    onUploadComplete={(url) => {
+                      form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
+                    }}
+                  />
+                  <Input 
+                    {...field}
+                    placeholder="Upload an image above, or paste a URL here."
+                    className="mt-2"
+                  />
+                </>
               </FormControl>
               <FormMessage />
             </FormItem>

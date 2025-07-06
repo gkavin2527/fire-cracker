@@ -19,6 +19,7 @@ import type { Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploader } from "./ImageUploader";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -151,9 +152,20 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Product Image URL</FormLabel>
+              <FormLabel>Product Image</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/image.png" {...field} />
+                <>
+                  <ImageUploader 
+                    onUploadComplete={(url) => {
+                      form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
+                    }}
+                  />
+                  <Input 
+                    {...field}
+                    placeholder="Upload an image above, or paste a URL here."
+                    className="mt-2"
+                  />
+                </>
               </FormControl>
               <FormMessage />
             </FormItem>
