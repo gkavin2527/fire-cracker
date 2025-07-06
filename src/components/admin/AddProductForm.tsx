@@ -49,6 +49,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
     defaultValues: initialData || {
       name: "",
       description: "",

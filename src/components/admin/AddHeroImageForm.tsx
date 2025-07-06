@@ -39,6 +39,7 @@ interface AddHeroImageFormProps {
 const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEditing = false }: AddHeroImageFormProps) => {
   const form = useForm<HeroImageFormData>({
     resolver: zodResolver(heroImageFormSchema),
+    mode: 'onChange',
     // Default values are set here and will be overridden by useEffect if initialData is present for editing
     defaultValues: {
       imageUrl: "",

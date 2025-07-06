@@ -48,6 +48,7 @@ interface AddCategoryFormProps {
 const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditing = false }: AddCategoryFormProps) => {
   const form = useForm<CategoryFormData>({
     resolver: zodResolver(categoryFormSchema),
+    mode: 'onChange',
     defaultValues: initialData || {
       name: "",
       slug: "",
