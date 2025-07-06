@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useRef } from 'react';
@@ -18,8 +19,7 @@ interface ImageUploaderProps {
 export default function ImageUploader({ onUploadSuccess, folder = 'images', isSubmitting = false }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadComplete, setUploadComplete] = useState(false);
+  const [lastUploadStatus, setLastUploadStatus] = useState<'success' | 'error' | null>(null);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,73 +39,69 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
       toast({ title: "Upload Error", description: "Firebase Storage is not configured. Check console.", variant: "destructive" });
       return;
     }
-  
+
     setIsUploading(true);
     setUploadProgress(0);
-    setUploadError(null);
-    setUploadComplete(false);
+    setLastUploadStatus(null);
 
     try {
       const storageRef = ref(storage, `${folder}/${Date.now()}-${file.name}`);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        }, 
-        (error) => {
-          console.error("Upload failed during transfer:", error);
-          let description = "An unknown error occurred during upload.";
-          if (error.code) {
-            switch(error.code) {
-              case 'storage/unauthorized':
-                description = "Permission denied. Your Firebase Storage rules must allow writes for authenticated users.";
-                break;
-              case 'storage/canceled':
-                description = "Upload was cancelled.";
-                break;
-              default:
-                description = `Upload failed with code: ${error.code}.`;
+      // Wrap the upload task in a promise to use with async/await
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            // This is the primary error handler from the upload task
+            console.error("Firebase Upload Error:", error);
+            reject(error); // Reject the promise on error
+          },
+          async () => {
+            // This runs when the upload task itself is complete
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              onUploadSuccess(downloadURL);
+              setLastUploadStatus('success');
+              toast({ title: "Upload Successful" });
+              resolve(); // Resolve the promise on success
+            } catch (getUrlError) {
+              // This catches errors from getDownloadURL (like permission errors)
+              console.error("getDownloadURL Error:", getUrlError);
+              reject(getUrlError); // Reject the promise if getting URL fails
             }
           }
-          setUploadError(description);
-          toast({ title: "Upload Failed", description: description, variant: "destructive", duration: 9000 });
-          // Error state is set, the finally block will handle UI reset
-          setIsUploading(false);
-          setUploadProgress(null);
-        }, 
-        async () => {
-          // Upload completed successfully, now get the download URL
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            onUploadSuccess(downloadURL);
-            setUploadComplete(true);
-            toast({ title: "Upload Successful" });
-          } catch (getUrlError: any) {
-              console.error("Failed to get download URL:", getUrlError);
-              const description = "Upload succeeded, but could not get the file URL. Check your Storage read permissions.";
-              setUploadError(description);
-              toast({ title: "URL Fetch Failed", description, variant: "destructive", duration: 9000 });
-          } finally {
-             // Reset state after completion logic is done
-            setIsUploading(false);
-            setUploadProgress(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
-          }
+        );
+      });
+    } catch (error: any) {
+      setLastUploadStatus('error');
+      let description = "An unknown error occurred during upload.";
+      if (error.code) {
+        switch (error.code) {
+          case 'storage/unauthorized':
+            description = "Permission denied. Your Firebase Storage rules must allow writes for authenticated users and allow public read to get the URL.";
+            break;
+          case 'storage/canceled':
+            description = "Upload was cancelled.";
+            break;
+          default:
+            description = `Upload failed. Code: ${error.code}. Check console for details.`;
         }
-      );
-    } catch (error) {
-      // This catches errors in the initial setup of the upload, not from the listener.
-      console.error("Upload setup failed:", error);
-      setUploadError("Could not start the upload process.");
+      }
+      toast({ title: "Upload Failed", description, variant: "destructive", duration: 9000 });
+    } finally {
+      // This block is GUARANTEED to run after the try/catch block,
+      // ensuring the UI always resets.
       setIsUploading(false);
       setUploadProgress(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Clear the file input
+      }
     }
   }, [folder, onUploadSuccess, toast]);
-
 
   const getStatusContent = () => {
     if (isUploading) {
@@ -116,19 +112,19 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
         </>
       );
     }
-    if (uploadError) {
+    if (lastUploadStatus === 'success') {
+       return (
+        <>
+          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+          Upload Complete! Choose another.
+        </>
+      );
+    }
+     if (lastUploadStatus === 'error') {
        return (
         <>
           <AlertTriangle className="mr-2 h-4 w-4 text-destructive" />
           Upload Failed. Try again.
-        </>
-      );
-    }
-     if (uploadComplete) {
-       return (
-        <>
-          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-          Upload Complete!
         </>
       );
     }
