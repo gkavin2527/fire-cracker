@@ -20,7 +20,8 @@ import type { Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import ImageDropzone from "./ImageDropzone";
+import ImageUploader from "./ImageUploader";
+import Image from "next/image";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
@@ -128,13 +129,22 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Product Image</FormLabel>
+              {field.value && (
+                <div className="relative w-full h-40 mt-2">
+                  <Image src={field.value} alt="Product preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
+                </div>
+              )}
               <FormControl>
-                <ImageDropzone
-                  value={field.value}
-                  onChange={(url) => form.setValue("imageUrl", url, { shouldValidate: true })}
-                  folder="products"
-                />
+                {/* This input is now for display. The uploader handles getting the URL. */}
+                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
               </FormControl>
+              <ImageUploader 
+                folder="products"
+                onUploadSuccess={(url) => {
+                  form.setValue('imageUrl', url, { shouldValidate: true });
+                }}
+                isSubmitting={isSubmitting}
+              />
               <FormMessage />
             </FormItem>
           )}

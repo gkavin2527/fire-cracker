@@ -18,7 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import type { HeroImageFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import ImageDropzone from "./ImageDropzone";
+import ImageUploader from "./ImageUploader";
+import Image from "next/image";
 
 const heroImageFormSchema = z.object({
   imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
@@ -96,13 +97,21 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
           render={({ field }) => (
             <FormItem>
               <FormLabel>Hero Image</FormLabel>
+               {field.value && (
+                <div className="relative w-full h-40 mt-2">
+                  <Image src={field.value} alt="Hero image preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
+                </div>
+              )}
               <FormControl>
-                <ImageDropzone
-                  value={field.value}
-                  onChange={(url) => form.setValue("imageUrl", url, { shouldValidate: true })}
-                  folder="hero-images"
-                />
+                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
               </FormControl>
+              <ImageUploader 
+                folder="hero-images"
+                onUploadSuccess={(url) => {
+                  form.setValue('imageUrl', url, { shouldValidate: true });
+                }}
+                isSubmitting={isSubmitting}
+              />
               <FormMessage />
             </FormItem>
           )}

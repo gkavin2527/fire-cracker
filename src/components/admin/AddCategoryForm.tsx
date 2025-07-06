@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
-import ImageDropzone from "./ImageDropzone";
+import ImageUploader from "./ImageUploader";
+import Image from "next/image";
 
 const generateSlug = (name: string) => {
   return name
@@ -111,13 +112,21 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category Image</FormLabel>
+              {field.value && (
+                <div className="relative w-full h-40 mt-2">
+                  <Image src={field.value} alt="Category preview" layout="fill" objectFit="contain" className="rounded-md border p-2 bg-white" />
+                </div>
+              )}
               <FormControl>
-                <ImageDropzone
-                  value={field.value}
-                  onChange={(url) => form.setValue("imageUrl", url, { shouldValidate: true })}
-                  folder="categories"
-                />
+                <Input placeholder="Upload an image to get URL" {...field} readOnly className="mt-2 bg-muted/80"/>
               </FormControl>
+              <ImageUploader 
+                folder="categories"
+                onUploadSuccess={(url) => {
+                  form.setValue('imageUrl', url, { shouldValidate: true });
+                }}
+                isSubmitting={isSubmitting}
+              />
               <FormMessage />
             </FormItem>
           )}
