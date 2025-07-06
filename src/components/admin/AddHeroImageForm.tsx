@@ -99,7 +99,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
               <FormControl>
                 <ImageDropzone
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={(url) => form.setValue("imageUrl", url, { shouldValidate: true })}
                   folder="hero-images"
                 />
               </FormControl>
