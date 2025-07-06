@@ -114,8 +114,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
                 <ImageDropzone
                   initialImageUrl={field.value}
                   onUrlChange={(url) => {
-                    field.onChange(url);
-                    form.trigger("imageUrl");
+                    form.setValue("imageUrl", url, { shouldValidate: true });
                   }}
                   folder="categories"
                 />
