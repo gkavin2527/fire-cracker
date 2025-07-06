@@ -98,7 +98,10 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
               <FormControl>
                 <ImageDropzone
                   initialImageUrl={field.value}
-                  onUrlChange={(url) => field.onChange(url)}
+                  onUrlChange={(url) => {
+                    field.onChange(url);
+                    form.trigger("imageUrl");
+                  }}
                   folder="hero-images"
                 />
               </FormControl>

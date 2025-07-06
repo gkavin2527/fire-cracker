@@ -113,7 +113,10 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
               <FormControl>
                 <ImageDropzone
                   initialImageUrl={field.value}
-                  onUrlChange={(url) => field.onChange(url)}
+                  onUrlChange={(url) => {
+                    field.onChange(url);
+                    form.trigger("imageUrl");
+                  }}
                   folder="categories"
                 />
               </FormControl>
