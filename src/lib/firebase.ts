@@ -2,6 +2,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 interface FirebaseConfigValues {
   apiKey?: string;
@@ -136,6 +137,7 @@ if (typeof window !== 'undefined') {
 
 let app: FirebaseApp;
 let db;
+let storage;
 
 if (!getApps().length) {
   try {
@@ -175,19 +177,20 @@ const googleProvider = new GoogleAuthProvider();
 try {
     if (app && app.name !== '[failed-initialization]') {
         db = getFirestore(app);
+        storage = getStorage(app);
     } else {
         db = null; 
+        storage = null;
         if (app.name === '[failed-initialization]') {
-          console.error("Firestore NOT initialized because Firebase app initialization failed catastrophically.");
+          console.error("Firestore and Storage NOT initialized because Firebase app initialization failed catastrophically.");
         }
     }
 } catch (e: any) {
     const criticalErrorLogger = typeof window !== 'undefined' ? console.error : console.error;
-    criticalErrorLogger("Firestore initialization error in src/lib/firebase.ts:", e.message);
+    criticalErrorLogger("Firestore/Storage initialization error in src/lib/firebase.ts:", e.message);
     db = null;
+    storage = null;
 }
 
 
-export { app, auth, googleProvider, db };
-
-    
+export { app, auth, googleProvider, db, storage };

@@ -16,22 +16,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Product, Category, ProductFormData } from '@/types';
+import type { Category, ProductFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import ImageDropzone from "./ImageDropzone";
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Product name must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   price: z.coerce.number().positive({ message: "Price must be a positive number." }),
   category: z.string().min(1, { message: "Please select a category." }),
-  imageUrl: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
+  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
   imageHint: z.string().max(50, "Image hint should be brief, max 50 chars.").optional(),
   stock: z.coerce.number().int().min(0, { message: "Stock must be a non-negative integer." }).optional(),
 });
 
-type ProductFormValues = ProductFormData; // Omit<Product, 'id' | 'rating'> is already ProductFormData
+type ProductFormValues = ProductFormData;
 
 interface AddProductFormProps {
   onSubmitProduct: (product: ProductFormValues) => Promise<boolean>;
@@ -53,7 +54,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
       description: "",
       price: 0,
       category: "",
-      imageUrl: "https://placehold.co/400x300.png",
+      imageUrl: "",
       imageHint: "product image",
       stock: 0,
     },
@@ -68,7 +69,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
         description: "",
         price: 0,
         category: "",
-        imageUrl: "https://placehold.co/400x300.png",
+        imageUrl: "",
         imageHint: "product image",
         stock: 0,
       });
@@ -110,7 +111,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
         description: "",
         price: 0,
         category: "",
-        imageUrl: "https://placehold.co/400x300.png",
+        imageUrl: "",
         imageHint: "product image",
         stock: 0,
       });
@@ -120,6 +121,23 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Product Image</FormLabel>
+              <FormControl>
+                <ImageDropzone
+                  initialImageUrl={field.value}
+                  onUrlChange={(url) => field.onChange(url)}
+                  folder="products"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"
@@ -213,19 +231,6 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Image URL</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com/image.png" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
          <FormField
           control={form.control}
           name="imageHint"
@@ -255,5 +260,3 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
 };
 
 export default AddProductForm;
-
-    

@@ -18,9 +18,10 @@ import { Switch } from "@/components/ui/switch";
 import type { HeroImageFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import ImageDropzone from "./ImageDropzone";
 
 const heroImageFormSchema = z.object({
-  imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
+  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
   altText: z.string().min(3, { message: "Alt text must be at least 3 characters." }),
   dataAiHint: z.string().min(1, "AI hint is required.").max(50, "AI hint should be brief, max 50 chars."),
   displayOrder: z.coerce.number().int().min(0, { message: "Display order must be a non-negative integer." }),
@@ -40,7 +41,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
     resolver: zodResolver(heroImageFormSchema),
     // Default values are set here and will be overridden by useEffect if initialData is present for editing
     defaultValues: {
-      imageUrl: "https://placehold.co/1200x400.png",
+      imageUrl: "",
       altText: "Hero Image",
       dataAiHint: "hero banner",
       displayOrder: 0,
@@ -61,7 +62,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
       });
     } else if (!isEditing) { // Reset to defaults for "Add New"
       form.reset({
-        imageUrl: "https://placehold.co/1200x400.png",
+        imageUrl: "",
         altText: "Hero Image",
         dataAiHint: "hero banner",
         displayOrder: 0,
@@ -75,7 +76,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
     const success = await onSubmitHeroImage(values);
     if (success && !isEditing) {
       form.reset({
-        imageUrl: "https://placehold.co/1200x400.png",
+        imageUrl: "",
         altText: "Hero Image",
         dataAiHint: "hero banner",
         displayOrder: 0,
@@ -93,9 +94,13 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL</FormLabel>
+              <FormLabel>Hero Image</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/hero.png" {...field} />
+                <ImageDropzone
+                  initialImageUrl={field.value}
+                  onUrlChange={(url) => field.onChange(url)}
+                  folder="hero-images"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -191,6 +196,3 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
 };
 
 export default AddHeroImageForm;
-
-
-    

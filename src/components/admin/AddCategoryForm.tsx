@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import type { CategoryFormData } from '@/types';
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import ImageDropzone from "./ImageDropzone";
 
 const generateSlug = (name: string) => {
   return name
@@ -32,7 +33,7 @@ const categoryFormSchema = z.object({
   name: z.string().min(3, { message: "Category name must be at least 3 characters." }),
   slug: z.string().min(3, { message: "Slug must be at least 3 characters." })
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase alphanumeric with dashes, e.g., 'sky-shots'."),
-  imageUrl: z.string().url({ message: "Please enter a valid image URL." }),
+  imageUrl: z.string().url({ message: "An image is required. Please upload one." }).min(1, { message: "An image is required. Please upload one." }),
   imageHint: z.string().min(1, "Image hint is required.").max(50, "Image hint should be brief, max 50 chars."),
   displayOrder: z.coerce.number().int().min(0, "Display order must be a non-negative integer.").optional(),
 });
@@ -50,7 +51,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
     defaultValues: initialData || {
       name: "",
       slug: "",
-      imageUrl: "https://placehold.co/200x150.png",
+      imageUrl: "",
       imageHint: "category image",
       displayOrder: 0,
     },
@@ -64,7 +65,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
       form.reset({
         name: "",
         slug: "",
-        imageUrl: "https://placehold.co/200x150.png",
+        imageUrl: "",
         imageHint: "category image",
         displayOrder: 0,
       });
@@ -91,7 +92,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
       form.reset({ // Reset to defaults for "Add New"
         name: "",
         slug: "",
-        imageUrl: "https://placehold.co/200x150.png",
+        imageUrl: "",
         imageHint: "category image",
         displayOrder: 0,
       });
@@ -103,6 +104,23 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category Image</FormLabel>
+              <FormControl>
+                <ImageDropzone
+                  initialImageUrl={field.value}
+                  onUrlChange={(url) => field.onChange(url)}
+                  folder="categories"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"
@@ -124,19 +142,6 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
               <FormLabel>Slug (URL-friendly name)</FormLabel>
               <FormControl>
                 <Input placeholder="e.g., sky-shots" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Image URL</FormLabel>
-              <FormControl>
-                <Input placeholder="https://example.com/image.png" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
