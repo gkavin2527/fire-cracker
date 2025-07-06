@@ -12,22 +12,22 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface ImageDropzoneProps {
-  initialImageUrl?: string | null;
-  onUrlChange: (url: string) => void;
-  folder?: string; // e.g., 'products', 'categories'
+  value?: string | null;
+  onChange: (url: string) => void;
+  folder?: string;
 }
 
-export default function ImageDropzone({ initialImageUrl, onUrlChange, folder = 'images' }: ImageDropzoneProps) {
+export default function ImageDropzone({ value, onChange, folder = 'images' }: ImageDropzoneProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(initialImageUrl || null);
+  const [preview, setPreview] = useState<string | null>(value || null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Sync preview with initialImageUrl prop
-    setPreview(initialImageUrl || null);
-  }, [initialImageUrl]);
+    // Sync preview with the value from react-hook-form
+    setPreview(value || null);
+  }, [value]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setError(null);
@@ -90,11 +90,11 @@ export default function ImageDropzone({ initialImageUrl, onUrlChange, folder = '
         setError(errorMessage);
         setUploadProgress(null);
         setFile(null);
-        setPreview(initialImageUrl || null); // Revert to initial image on failure
+        setPreview(value || null); // Revert to initial form value on failure
       },
       () => {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          onUrlChange(downloadURL);
+          onChange(downloadURL); // Use the onChange from react-hook-form
           setUploadProgress(100);
           toast({ title: "Upload Successful", description: "Image has been uploaded." });
         });
@@ -106,7 +106,7 @@ export default function ImageDropzone({ initialImageUrl, onUrlChange, folder = '
     e.stopPropagation(); // prevent triggering the dropzone click
     setFile(null);
     setPreview(null);
-    onUrlChange(""); // Clear the URL in the form
+    onChange(""); // Clear the URL in the form
     setUploadProgress(null);
     setError(null);
   };

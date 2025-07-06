@@ -129,10 +129,8 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
               <FormLabel>Product Image</FormLabel>
               <FormControl>
                 <ImageDropzone
-                  initialImageUrl={field.value}
-                  onUrlChange={(url) => {
-                    form.setValue("imageUrl", url, { shouldValidate: true });
-                  }}
+                  value={field.value}
+                  onChange={field.onChange}
                   folder="products"
                 />
               </FormControl>
