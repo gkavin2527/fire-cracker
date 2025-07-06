@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, XCircle } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ImageUploaderProps {
@@ -63,16 +63,27 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
         setUploadProgress(null);
       },
       () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          toast({ title: "Upload Successful" });
-          onUploadSuccess(downloadURL);
-          setIsUploading(false);
-          setUploadProgress(null); // This was the missing piece
-          setFile(null); // Clear the file state
-          if(fileInputRef.current) {
-            fileInputRef.current.value = ""; // Clear the file input element
-          }
-        });
+        getDownloadURL(uploadTask.snapshot.ref)
+          .then((downloadURL) => {
+            toast({ title: "Upload Successful" });
+            onUploadSuccess(downloadURL);
+            setIsUploading(false);
+            setUploadProgress(null);
+            setFile(null);
+            if(fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to get download URL:", error);
+            let description = "Could not get the image URL after upload.";
+            if (error.code === 'storage/unauthorized') {
+              description = "Permission denied. You may not have rights to read the uploaded file. Please check your Storage security rules to allow public reads.";
+            }
+            toast({ title: "Upload Finalization Failed", description, variant: "destructive", duration: 7000 });
+            setIsUploading(false);
+            setUploadProgress(null);
+          });
       }
     );
   };
