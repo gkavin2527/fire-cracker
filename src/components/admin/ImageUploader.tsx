@@ -1,14 +1,12 @@
-
 "use client";
 
 import { useState, useRef } from 'react';
 import { storage } from '@/lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ImageUploaderProps {
@@ -19,7 +17,6 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({ onUploadSuccess, folder = 'images', isSubmitting = false }: ImageUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,46 +43,40 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
     }
     
     setIsUploading(true);
-    setUploadProgress(0);
 
-    const storageRef = ref(storage, `${folder}/${Date.now()}-${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    try {
+      const storageRef = ref(storage, `${folder}/${Date.now()}-${file.name}`);
+      
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
 
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        toast({ title: "Upload Failed", description: "Please check storage rules and try again.", variant: "destructive" });
-        setIsUploading(false);
-        setUploadProgress(null);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref)
-          .then((downloadURL) => {
-            toast({ title: "Upload Successful" });
-            onUploadSuccess(downloadURL);
-            setIsUploading(false);
-            setUploadProgress(null);
-            setFile(null);
-            if(fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-          })
-          .catch((error) => {
-            console.error("Failed to get download URL:", error);
-            let description = "Could not get the image URL after upload.";
-            if (error.code === 'storage/unauthorized') {
-              description = "Permission denied. You may not have rights to read the uploaded file. Please check your Storage security rules to allow public reads.";
-            }
-            toast({ title: "Upload Finalization Failed", description, variant: "destructive", duration: 7000 });
-            setIsUploading(false);
-            setUploadProgress(null);
-          });
+      toast({ title: "Upload Successful" });
+      onUploadSuccess(downloadURL);
+
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      let description = "An unknown error occurred during upload.";
+      if (error.code) {
+        switch(error.code) {
+          case 'storage/unauthorized':
+            description = "Permission denied. Check your Firebase Storage security rules. They must allow writes for authenticated users.";
+            break;
+          case 'storage/object-not-found':
+             description = "File not found. This can happen if you try to get a URL for a file that failed to upload.";
+             break;
+          default:
+            description = `Upload failed with code: ${error.code}. Check the browser console for more details.`;
+        }
       }
-    );
+      toast({ title: "Upload Failed", description: description, variant: "destructive", duration: 9000 });
+    } finally {
+      // This block ensures the UI is always reset
+      setIsUploading(false);
+      setFile(null);
+      if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   return (
@@ -100,13 +91,14 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
                 className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-primary/10 file:px-2 file:py-1 file:text-primary file:font-medium hover:file:bg-primary/20"
             />
             <Button type="button" onClick={handleUpload} disabled={!file || isUploading || isSubmitting}>
-            <Upload className={cn("mr-2 h-4 w-4", isUploading && "animate-spin")} />
-            {isUploading ? `${Math.round(uploadProgress || 0)}%` : 'Upload'}
+              {isUploading ? (
+                <Loader2 className={cn("mr-2 h-4 w-4", isUploading && "animate-spin")} />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
         </div>
-        {uploadProgress !== null && (
-            <Progress value={uploadProgress} className="w-full h-1" />
-        )}
     </div>
   );
 }
