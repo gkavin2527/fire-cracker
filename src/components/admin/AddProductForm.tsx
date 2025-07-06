@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -154,7 +155,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
             <FormItem>
               <FormLabel>Product Image</FormLabel>
               <FormControl>
-                <>
+                <div>
                   <ImageUploader 
                     onUploadComplete={(url) => {
                       form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
@@ -165,7 +166,7 @@ const AddProductForm = ({ onSubmitProduct, isSubmitting, initialData, isEditing 
                     placeholder="Upload an image above, or paste a URL here."
                     className="mt-2"
                   />
-                </>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

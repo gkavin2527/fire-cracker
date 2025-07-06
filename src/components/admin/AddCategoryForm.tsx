@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -137,7 +138,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
             <FormItem>
               <FormLabel>Category Image</FormLabel>
               <FormControl>
-                <>
+                <div>
                   <ImageUploader 
                     onUploadComplete={(url) => {
                       form.setValue('imageUrl', url, { shouldValidate: true, shouldDirty: true });
@@ -148,7 +149,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
                     placeholder="Upload an image above, or paste a URL here."
                     className="mt-2"
                   />
-                </>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
