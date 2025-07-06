@@ -1,4 +1,3 @@
-
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,55 +6,64 @@ import AddToCartButton from './AddToCartButton';
 import { Star, ShieldCheck } from 'lucide-react';
 import ProductCard from '@/components/products/ProductCard';
 import type { Product } from '@/types';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs, query, where, limit } from 'firebase/firestore';
 
 async function getProduct(id: string): Promise<Product | null> {
+  if (!db) {
+    console.error("Firestore DB is not available in getProduct on product detail page.");
+    return null;
+  }
   try {
-    console.log("Ganesan: ",APP_URL)
-    const res = await fetch(`${APP_URL}/api/products/${id}`, { cache: 'no-store' });
-    if (!res.ok) {
-      if (res.status === 404) return null; // Product not found
-      console.error(`Failed to fetch product ${id}:`, res.status, await res.text());
+    const productDocRef = doc(db, 'products', id);
+    const productDoc = await getDoc(productDocRef);
+
+    if (!productDoc.exists()) {
       return null;
     }
-    return res.json();
+    return { id: productDoc.id, ...productDoc.data() } as Product;
   } catch (error) {
-    console.error(`Error fetching product ${id}:`, error);
+    console.error(`Error fetching product ${id} from Firestore:`, error);
     return null;
   }
 }
 
 async function getRelatedProducts(category: string, currentProductId: string): Promise<Product[]> {
+  if (!db) {
+    console.error("Firestore DB is not available in getRelatedProducts on product detail page.");
+    return [];
+  }
   try {
-    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
-    if (!res.ok) {
-      console.error("Failed to fetch all products for related products:", res.status, await res.text());
-      return [];
-    }
-    const allProducts: Product[] = await res.json();
-    return allProducts
-      .filter(p => p.category === category && p.id !== currentProductId)
-      .slice(0, 4);
+    const productsRef = collection(db, 'products');
+    const q = query(productsRef, where('category', '==', category), limit(5));
+    const querySnapshot = await getDocs(q);
+    
+    const products: Product[] = [];
+    querySnapshot.forEach((doc) => {
+      products.push({ id: doc.id, ...doc.data() } as Product);
+    });
+
+    // Filter out the current product and return the first 4
+    return products.filter(p => p.id !== currentProductId).slice(0, 4);
   } catch (error) {
-    console.error("Error fetching related products:", error);
+    console.error("Error fetching related products from Firestore:", error);
     return [];
   }
 }
 
 export async function generateStaticParams() {
+   if (!db) {
+    console.error("Firestore DB is not available in generateStaticParams for product pages.");
+    return [];
+  }
   try {
-    const res = await fetch(`${APP_URL}/api/products`, { cache: 'no-store' });
-    if (!res.ok) {
-      console.error("Failed to fetch products for generateStaticParams:", res.status, await res.text());
-      return [];
-    }
-    const products: Product[] = await res.json();
-    return products.map(product => ({
-      id: product.id,
+    const productsCollection = collection(db, 'products');
+    const productsSnapshot = await getDocs(productsCollection);
+    return productsSnapshot.docs.map(doc => ({
+      id: doc.id,
     }));
   } catch (error) {
-    console.error("Error in generateStaticParams fetching products:", error);
+    console.error("Error in generateStaticParams fetching products from Firestore:", error);
     return [];
   }
 }
@@ -146,4 +154,3 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     </div>
   );
 }
-
