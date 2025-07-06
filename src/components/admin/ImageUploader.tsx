@@ -67,6 +67,7 @@ export default function ImageUploader({ onUploadSuccess, folder = 'images', isSu
           toast({ title: "Upload Successful" });
           onUploadSuccess(downloadURL);
           setIsUploading(false);
+          setUploadProgress(null); // This was the missing piece
           setFile(null); // Clear the file state
           if(fileInputRef.current) {
             fileInputRef.current.value = ""; // Clear the file input element
