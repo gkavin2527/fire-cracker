@@ -18,7 +18,6 @@ import AddProductForm from '@/components/admin/AddProductForm';
 import AddCategoryForm from '@/components/admin/AddCategoryForm';
 import AddHeroImageForm from '@/components/admin/AddHeroImageForm';
 import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
-import { MediaUploader } from '@/components/admin/MediaUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -841,8 +840,6 @@ export default function AdminPage() {
           </Dialog>
         </div>
       </div>
-      
-      <MediaUploader />
 
       {/* Hero Image Management Card */}
       <Card className="shadow-md rounded-lg border-border/60">

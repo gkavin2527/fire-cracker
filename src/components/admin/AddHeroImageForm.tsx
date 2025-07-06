@@ -98,7 +98,7 @@ const AddHeroImageForm = ({ onSubmitHeroImage, isSubmitting, initialData, isEdit
               <FormControl>
                 <Input 
                   {...field}
-                  placeholder="Upload image above and paste URL here"
+                  placeholder="e.g., https://example.com/image.png"
                 />
               </FormControl>
               <FormMessage />

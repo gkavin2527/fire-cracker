@@ -139,7 +139,7 @@ const AddCategoryForm = ({ onSubmitCategory, isSubmitting, initialData, isEditin
               <FormControl>
                  <Input 
                     {...field}
-                    placeholder="Upload image above and paste URL here"
+                    placeholder="e.g., https://example.com/image.png"
                   />
               </FormControl>
               <FormMessage />
